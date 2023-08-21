@@ -1,0 +1,14 @@
+{
+  "name": "euler-rewards",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Euler Labs",
+  "license": "MIT",
+  "scripts": {
+    "prettier": "prettier --write src/ test/"
+  },
+  "devDependencies": {
+    "prettier": "2.8.8",
+    "prettier-plugin-solidity": "^1.1.3"
+  }
+}

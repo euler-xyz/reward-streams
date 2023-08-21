@@ -2,5 +2,14 @@
 src = "src"
 out = "out"
 libs = ["lib"]
+solc = "0.8.19"
+optimizer_runs = 10000
+remappings = [
+    "forge-std/=lib/forge-std/src/",
+    "openzeppelin/=lib/openzeppelin-contracts/contracts",
+    "euler-cvc/=lib/euler-cvc/src"
+]
 
-# See more config options https://github.com/foundry-rs/foundry/tree/master/config
+[profile.default.fuzz]
+#max_test_rejects = 1_000_000
+runs = 1000
