@@ -1,194 +1,101 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: GPL-2.0-or-later
 
-import "./RewardsDistributor.sol";
+pragma solidity ^0.8.23;
 
-contract StakingRewardsDistributor is
-    IStakingRewardsDistributor,
-    RewardsDistributor
-{
-    using EnumerableSet for EnumerableSet.AddressSet;
+import "./BaseRewardsDistributor.sol";
+
+/// @title StakingRewardsDistributor
+/// @notice This contract inherits from BaseRewardsDistributor and implements IStakingRewardsDistributor interface.
+/// It allows for the rewards to be distributed to the rewarded token holders who have staked it.
+contract StakingRewardsDistributor is BaseRewardsDistributor, IStakingRewardsDistributor {
     using SafeERC20 for IERC20;
+    using Set for SetStorage;
 
-    event Staked(address indexed account, address indexed vault, uint amount);
-    event Unstaked(address indexed account, address indexed vault, uint amount);
+    /// @notice Event emitted when a user stakes tokens.
+    event Staked(address indexed account, address indexed rewarded, uint256 amount);
 
-    constructor(
-        ICVC cvc,
-        uint40 periodDuration
-    )
-        RewardsDistributor(
-            cvc,
-            IStakingRewardsDistributor(address(0)),
-            periodDuration
-        )
-    {}
+    /// @notice Event emitted when a user unstakes tokens.
+    event Unstaked(address indexed account, address indexed rewarded, uint256 amount);
 
-    function enableReward(
-        address vault,
-        address reward
-    ) external override(IRewardsDistributor, RewardsDistributor) {
-        address msgSender = CVCAuthenticate();
+    /// @notice Constructor for the StakingRewardsDistributor contract.
+    /// @param evc The Ethereum Vault Connector contract.
+    /// @param periodDuration The duration of a period.
+    constructor(IEVC evc, uint40 periodDuration) BaseRewardsDistributor(evc, periodDuration) {}
 
-        if (accountLookup[msgSender].enabledRewards[vault].add(reward)) {
-            uint currentBalance = accountLookup[msgSender].balances[vault];
-            uint currentTotal = totals[vault][reward];
+    /// @notice Allows a user to stake rewarded tokens.
+    /// @dev If the amount is max, the entire balance of the user is staked.
+    /// @param rewarded The address of the rewarded token.
+    /// @param amount The amount of tokens to stake.
+    function stake(address rewarded, uint256 amount) public virtual override nonReentrant {
+        address msgSender = _msgSender();
 
-            totals[vault][reward] = currentTotal + currentBalance;
-
-            updateDataAndClearAmounts(
-                msgSender,
-                vault,
-                reward,
-                currentTotal,
-                0
-            );
-
-            emit RewardEnabled(msgSender, vault, reward);
+        if (amount == 0) {
+            revert InvalidAmount();
+        } else if (amount == type(uint256).max) {
+            amount = IERC20(rewarded).balanceOf(msgSender);
         }
+
+        uint256 currentBalance = balances[msgSender][rewarded];
+        address[] memory rewardsArray = rewards[msgSender][rewarded].get();
+
+        for (uint256 i; i < rewardsArray.length; ++i) {
+            address reward = rewardsArray[i];
+            uint256 currentTotal = distribution[rewarded][reward].totalEligible;
+
+            updateRewardTokenData(msgSender, rewarded, reward, currentTotal, currentBalance, false);
+
+            distribution[rewarded][reward].totalEligible = currentTotal + amount;
+        }
+
+        balances[msgSender][rewarded] = currentBalance + amount;
+
+        uint256 oldBalance = IERC20(rewarded).balanceOf(address(this));
+        IERC20(rewarded).safeTransferFrom(msgSender, address(this), amount);
+
+        // If the balance of the contract did not increase by the staked amount, revert.
+        if (IERC20(rewarded).balanceOf(address(this)) - oldBalance != amount) {
+            revert InvalidAmount();
+        }
+
+        emit Staked(msgSender, rewarded, amount);
     }
 
-    function disableReward(
-        address vault,
-        address reward
-    ) external override(IRewardsDistributor, RewardsDistributor) {
-        address msgSender = CVCAuthenticate();
-
-        if (accountLookup[msgSender].enabledRewards[vault].remove(reward)) {
-            uint currentBalance = accountLookup[msgSender].balances[vault];
-            uint currentTotal = totals[vault][reward];
-
-            totals[vault][reward] = currentTotal - currentBalance;
-
-            updateDataAndClearAmounts(
-                msgSender,
-                vault,
-                reward,
-                currentTotal,
-                currentBalance
-            );
-
-            emit RewardDisabled(msgSender, vault, reward);
-        }
-    }
-
-    function updateRewards(
-        address account,
-        address vault
-    ) public override(IRewardsDistributor, RewardsDistributor) {
-        address[] memory enabledRewards = accountLookup[account]
-            .enabledRewards[vault]
-            .values();
-
-        if (enabledRewards.length == 0) return;
-
-        uint currentBalance = accountLookup[account].balances[vault];
-
-        // we need to iterate over all rewards that the account has enabled for a given vault and update the storage
-        uint length = enabledRewards.length;
-        for (uint i; i < length; ) {
-            updateDataAndClearAmounts(
-                account,
-                vault,
-                enabledRewards[i],
-                totals[vault][enabledRewards[i]],
-                currentBalance
-            );
-
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
-    function stake(address vault, uint amount) public override {
-        address msgSender = CVCAuthenticate();
-
-        if (amount == 0) revert RewardsDistributor_InvalidAmount();
-
-        amount = amount == type(uint).max
-            ? IERC20(vault).balanceOf(msgSender)
-            : amount;
-
-        uint oldBalance = IERC20(vault).balanceOf(address(this));
-        IERC20(vault).safeTransferFrom(msgSender, address(this), amount);
-
-        if (IERC20(vault).balanceOf(address(this)) - oldBalance != amount) {
-            revert RewardsDistributor_InvalidAmount();
-        }
-
-        // balance must be updated after the transfer because the non-staking rewards distributor
-        // may call into this contract to fetch the balance of msgSender during the transfer
-        uint currentBalance = accountLookup[msgSender].balances[vault];
-        accountLookup[msgSender].balances[vault] = currentBalance + amount;
-
-        address[] memory enabledRewards = accountLookup[msgSender]
-            .enabledRewards[vault]
-            .values();
-        uint length = enabledRewards.length;
-        for (uint i; i < length; ) {
-            address reward = enabledRewards[i];
-            uint currentTotal = totals[vault][reward];
-            totals[vault][reward] = currentTotal + amount;
-
-            updateDataAndClearAmounts(
-                msgSender,
-                vault,
-                reward,
-                currentTotal,
-                currentBalance
-            );
-
-            unchecked {
-                ++i;
-            }
-        }
-
-        emit Staked(msgSender, vault, amount);
-    }
-
+    /// @notice Allows a user to unstake rewarded tokens.
+    /// @dev If the amount is max, the entire balance of the user is unstaked.
+    /// @param rewarded The address of the rewarded token.
+    /// @param recipient The address to receive the unstaked tokens.
+    /// @param amount The amount of tokens to unstake.
+    /// @param forgiveRecentReward Whether to forgive the recent reward and not update the accumulator.
     function unstake(
-        address vault,
+        address rewarded,
         address recipient,
-        uint amount
-    ) public override {
-        address msgSender = CVCAuthenticate();
+        uint256 amount,
+        bool forgiveRecentReward
+    ) public virtual override nonReentrant {
+        address msgSender = _msgSender();
 
-        if (amount == 0) revert RewardsDistributor_InvalidAmount();
-
-        amount = amount == type(uint).max
-            ? accountLookup[msgSender].balances[vault]
-            : amount;
-
-        IERC20(vault).safeTransfer(recipient, amount);
-
-        // balance must be updated after the transfer because the non-staking rewards distributor
-        // may call into this contract to fetch the balance of msgSender during the transfer
-        uint currentBalance = accountLookup[msgSender].balances[vault];
-        accountLookup[msgSender].balances[vault] = currentBalance - amount;
-
-        address[] memory enabledRewards = accountLookup[msgSender]
-            .enabledRewards[vault]
-            .values();
-        uint length = enabledRewards.length;
-        for (uint i; i < length; ) {
-            address reward = enabledRewards[i];
-            uint currentTotal = totals[vault][reward];
-            totals[vault][reward] = currentTotal - amount;
-
-            updateDataAndClearAmounts(
-                msgSender,
-                vault,
-                reward,
-                currentTotal,
-                currentBalance
-            );
-
-            unchecked {
-                ++i;
-            }
+        if (amount == 0) {
+            revert InvalidAmount();
+        } else if (amount == type(uint256).max) {
+            amount = balances[msgSender][rewarded];
         }
 
-        emit Unstaked(msgSender, vault, amount);
+        uint256 currentBalance = balances[msgSender][rewarded];
+        address[] memory rewardsArray = rewards[msgSender][rewarded].get();
+
+        for (uint256 i; i < rewardsArray.length; ++i) {
+            address reward = rewardsArray[i];
+            uint256 currentTotal = distribution[rewarded][reward].totalEligible;
+
+            updateRewardTokenData(msgSender, rewarded, reward, currentTotal, currentBalance, forgiveRecentReward);
+
+            distribution[rewarded][reward].totalEligible = currentTotal - amount;
+        }
+
+        balances[msgSender][rewarded] = currentBalance - amount;
+
+        IERC20(rewarded).safeTransfer(recipient, amount);
+
+        emit Unstaked(msgSender, rewarded, amount);
     }
 }
