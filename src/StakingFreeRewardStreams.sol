@@ -2,25 +2,25 @@
 
 pragma solidity ^0.8.23;
 
-import "./BaseRewardsDistributor.sol";
+import "./BaseRewardStreams.sol";
 import "./interfaces/IBalanceForwarder.sol";
 
-/// @title RewardsDistributor
-/// @notice This contract inherits from BaseRewardsDistributor and implements INonStakingRewardsDistributor interface. It
+/// @title StakingFreeRewardStreams
+/// @notice This contract inherits from BaseRewardStreams and implements IStakingFreeRewardStreams interface. It
 /// allows for the rewards to be distributed to the rewarded token holders without a need to stake the shares. The
 /// rewarded token contract must be compatible with the Balance Forwarder interface and the balanceTrackerHook function.
 /// The balanceTrackerHook must be called with:
 /// - the account's new balance when account's balance changes
 /// - the current account's balance when the balance forwarding is enabled
 /// - the account's balance of 0 when the balance forwarding is disabled
-contract NonStakingRewardsDistributor is BaseRewardsDistributor, INonStakingRewardsDistributor {
+contract StakingFreeRewardStreams is BaseRewardStreams, IStakingFreeRewardStreams {
     using SafeERC20 for IERC20;
     using Set for SetStorage;
 
-    /// @notice Constructor for the NonStakingRewardsDistributor contract.
+    /// @notice Constructor for the StakingFreeRewardStreams contract.
     /// @param evc The Ethereum Vault Connector contract.
     /// @param epochDuration The duration of an epoch.
-    constructor(IEVC evc, uint40 epochDuration) BaseRewardsDistributor(evc, epochDuration) {}
+    constructor(IEVC evc, uint40 epochDuration) BaseRewardStreams(evc, epochDuration) {}
 
     /// @notice Executes the balance tracking hook for an account
     /// @param account The account address to execute the hook for

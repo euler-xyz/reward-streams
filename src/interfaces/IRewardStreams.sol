@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 
 import "./IBalanceTracker.sol";
 
-interface IRewardsDistributor {
+interface IRewardStreams {
     function registerReward(
         address rewarded,
         address reward,
@@ -29,9 +29,9 @@ interface IRewardsDistributor {
     function getEpochEndTimestamp(uint40 epoch) external view returns (uint40);
 }
 
-interface INonStakingRewardsDistributor is IRewardsDistributor, IBalanceTracker {}
+interface IStakingFreeRewardStreams is IRewardStreams, IBalanceTracker {}
 
-interface IStakingRewardsDistributor is IRewardsDistributor {
+interface IStakingRewardStreams is IRewardStreams {
     function stake(address rewarded, uint256 amount) external;
     function unstake(address rewarded, address recipient, uint256 amount, bool forgiveRecentReward) external;
 }

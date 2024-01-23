@@ -6,12 +6,12 @@ import "openzeppelin/utils/ReentrancyGuard.sol";
 import "openzeppelin/token/ERC20/utils/SafeERC20.sol";
 import "evc/Set.sol";
 import "evc/interfaces/IEthereumVaultConnector.sol";
-import "./interfaces/IRewardsDistributor.sol";
+import "./interfaces/IRewardStreams.sol";
 
-/// @title BaseRewardsDistributor
+/// @title BaseRewardStreams
 /// @notice This contract is a base class for rewards distributors that allow anyone to register a reward scheme for a
 /// rewarded token.
-abstract contract BaseRewardsDistributor is IRewardsDistributor, ReentrancyGuard {
+abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using Set for SetStorage;
 
@@ -66,7 +66,7 @@ abstract contract BaseRewardsDistributor is IRewardsDistributor, ReentrancyGuard
     mapping(address account => mapping(address rewarded => uint256)) internal balances;
     mapping(address account => mapping(address rewarded => mapping(address reward => EarnStorage))) internal earned;
 
-    /// @notice Constructor for the BaseRewardsDistributor contract.
+    /// @notice Constructor for the BaseRewardStreams contract.
     /// @param evc The Ethereum Vault Connector contract.
     /// @param epochDuration The duration of an epoch.
     constructor(IEVC evc, uint40 epochDuration) {

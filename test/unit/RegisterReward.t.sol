@@ -4,12 +4,12 @@ pragma solidity ^0.8.23;
 
 import "forge-std/Test.sol";
 import "evc/EthereumVaultConnector.sol";
-import "../harness/BaseRewardsDistributorHarness.sol";
+import "../harness/BaseRewardStreamsHarness.sol";
 import "../utils/MockERC20.sol";
 
 contract RegisterRewardTest is Test {
     EthereumVaultConnector internal evc;
-    BaseRewardsDistributorHarness internal distributor;
+    BaseRewardStreamsHarness internal distributor;
     mapping(address rewarded => mapping(address reward => mapping(uint256 epoch => uint256 amount))) internal buckets;
     address internal rewarded;
     address internal reward;
@@ -18,7 +18,7 @@ contract RegisterRewardTest is Test {
     function setUp() external {
         evc = new EthereumVaultConnector();
 
-        distributor = new BaseRewardsDistributorHarness(evc, 10 days);
+        distributor = new BaseRewardStreamsHarness(evc, 10 days);
 
         rewarded = address(new MockERC20("Rewarded", "RWDD"));
         vm.label(rewarded, "REWARDED");
@@ -48,10 +48,10 @@ contract RegisterRewardTest is Test {
 
     function test_RevertIfInvalidEpochDuration_Constructor(uint40 epochDuration) external {
         if (epochDuration < 7 days) {
-            vm.expectRevert(BaseRewardsDistributor.InvalidEpoch.selector);
+            vm.expectRevert(BaseRewardStreams.InvalidEpoch.selector);
         }
 
-        new BaseRewardsDistributorHarness(IEVC(address(0)), epochDuration);
+        new BaseRewardStreamsHarness(IEVC(address(0)), epochDuration);
     }
 
     function test_RegisterReward(
@@ -70,7 +70,7 @@ contract RegisterRewardTest is Test {
         amountsLength2 = uint8(bound(amountsLength2, 1, 25));
 
         vm.warp(blockTimestamp);
-        distributor = new BaseRewardsDistributorHarness(evc, epochDuration);
+        distributor = new BaseRewardStreamsHarness(evc, epochDuration);
 
         vm.startPrank(seeder);
         MockERC20(reward).approve(address(distributor), type(uint256).max);
@@ -92,7 +92,7 @@ contract RegisterRewardTest is Test {
         }
 
         vm.expectEmit(true, true, false, true, address(distributor));
-        emit BaseRewardsDistributor.RewardRegistered(rewarded, reward, startEpoch, amounts);
+        emit BaseRewardStreams.RewardRegistered(rewarded, reward, startEpoch, amounts);
         distributor.registerReward(rewarded, reward, startEpoch, amounts);
 
         // verify that the total amount was properly transferred
@@ -102,7 +102,7 @@ contract RegisterRewardTest is Test {
         assertEq(
             abi.encode(distributor.getDistribution(rewarded, reward)),
             abi.encode(
-                BaseRewardsDistributor.DistributionStorage({
+                BaseRewardStreams.DistributionStorage({
                     lastUpdated: uint40(block.timestamp),
                     accumulator: 0,
                     totalRegistered: totalAmount,
@@ -136,7 +136,7 @@ contract RegisterRewardTest is Test {
 
         uint256 preBalance = MockERC20(reward).balanceOf(address(distributor));
         vm.expectEmit(true, true, false, true, address(distributor));
-        emit BaseRewardsDistributor.RewardRegistered(rewarded, reward, distributor.currentEpoch() + 1, amounts);
+        emit BaseRewardStreams.RewardRegistered(rewarded, reward, distributor.currentEpoch() + 1, amounts);
         distributor.registerReward(rewarded, reward, startEpoch, amounts);
 
         // verify that the total amount was properly transferred
@@ -146,7 +146,7 @@ contract RegisterRewardTest is Test {
         assertEq(
             abi.encode(distributor.getDistribution(rewarded, reward)),
             abi.encode(
-                BaseRewardsDistributor.DistributionStorage({
+                BaseRewardStreams.DistributionStorage({
                     lastUpdated: uint40(block.timestamp),
                     accumulator: 0,
                     totalRegistered: uint128(preBalance) + totalAmount,
@@ -188,14 +188,14 @@ contract RegisterRewardTest is Test {
 
         preBalance = MockERC20(reward).balanceOf(address(distributor));
         vm.expectEmit(true, true, false, true, address(distributor));
-        emit BaseRewardsDistributor.RewardRegistered(rewarded, reward, startEpoch, amounts);
+        emit BaseRewardStreams.RewardRegistered(rewarded, reward, startEpoch, amounts);
         distributor.registerReward(rewarded, reward, startEpoch, amounts);
 
         // verify that the total amount was properly transferred
         assertEq(MockERC20(reward).balanceOf(address(distributor)), preBalance + totalAmount);
 
         // verify that the distribution storage was properly updated (considering that some has time elapsed)
-        BaseRewardsDistributor.DistributionStorage memory distribution = distributor.getDistribution(rewarded, reward);
+        BaseRewardStreams.DistributionStorage memory distribution = distributor.getDistribution(rewarded, reward);
         assertEq(distribution.lastUpdated, uint40(block.timestamp));
         assertGt(distribution.accumulator, 0);
         assertEq(distribution.totalRegistered, uint128(preBalance) + totalAmount);
@@ -227,13 +227,13 @@ contract RegisterRewardTest is Test {
 
         vm.startPrank(seeder);
         uint40 startEpoch = distributor.currentEpoch();
-        vm.expectRevert(BaseRewardsDistributor.InvalidEpoch.selector);
+        vm.expectRevert(BaseRewardStreams.InvalidEpoch.selector);
         distributor.registerReward(rewarded, reward, startEpoch, amounts);
         vm.stopPrank();
 
         vm.startPrank(seeder);
         startEpoch = distributor.currentEpoch() + distributor.MAX_EPOCHS_AHEAD() + 1;
-        vm.expectRevert(BaseRewardsDistributor.InvalidEpoch.selector);
+        vm.expectRevert(BaseRewardStreams.InvalidEpoch.selector);
         distributor.registerReward(rewarded, reward, startEpoch, amounts);
         vm.stopPrank();
 
@@ -264,7 +264,7 @@ contract RegisterRewardTest is Test {
 
         vm.startPrank(seeder);
         if (amounts.length == 0 || amounts.length > distributor.MAX_DISTRIBUTION_LENGTH()) {
-            vm.expectRevert(BaseRewardsDistributor.InvalidAmount.selector);
+            vm.expectRevert(BaseRewardStreams.InvalidAmount.selector);
         }
         distributor.registerReward(rewarded, reward, 0, amounts);
         vm.stopPrank();
@@ -275,7 +275,7 @@ contract RegisterRewardTest is Test {
         }
 
         vm.startPrank(seeder);
-        vm.expectRevert(BaseRewardsDistributor.InvalidAmount.selector);
+        vm.expectRevert(BaseRewardStreams.InvalidAmount.selector);
         distributor.registerReward(rewarded, reward, 0, amounts);
         vm.stopPrank();
 
@@ -286,7 +286,7 @@ contract RegisterRewardTest is Test {
         }
 
         vm.startPrank(seeder);
-        vm.expectRevert(BaseRewardsDistributor.InvalidAmount.selector);
+        vm.expectRevert(BaseRewardStreams.InvalidAmount.selector);
         distributor.registerReward(rewarded, reward, 0, amounts);
         vm.stopPrank();
     }
@@ -296,7 +296,7 @@ contract RegisterRewardTest is Test {
         amounts[0] = 1;
 
         // initialize the distribution data and set the total registered amount to the max value
-        BaseRewardsDistributor.DistributionStorage memory distribution = BaseRewardsDistributor.DistributionStorage({
+        BaseRewardStreams.DistributionStorage memory distribution = BaseRewardStreams.DistributionStorage({
             lastUpdated: uint40(1),
             accumulator: 0,
             totalRegistered: uint128(type(uint160).max / 1e18),
@@ -307,7 +307,7 @@ contract RegisterRewardTest is Test {
         distributor.setDistribution(rewarded, reward, distribution);
 
         vm.startPrank(seeder);
-        vm.expectRevert(BaseRewardsDistributor.AccumulatorOverflow.selector);
+        vm.expectRevert(BaseRewardStreams.AccumulatorOverflow.selector);
         distributor.registerReward(rewarded, reward, 0, amounts);
         vm.stopPrank();
 
@@ -335,7 +335,7 @@ contract RegisterRewardTest is Test {
         MockERC20(malicious).approve(address(distributor), type(uint256).max);
 
         vm.startPrank(seeder);
-        vm.expectRevert(BaseRewardsDistributor.InvalidAmount.selector);
+        vm.expectRevert(BaseRewardStreams.InvalidAmount.selector);
         distributor.registerReward(rewarded, malicious, 0, amounts);
         vm.stopPrank();
 

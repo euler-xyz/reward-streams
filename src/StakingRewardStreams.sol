@@ -2,12 +2,12 @@
 
 pragma solidity ^0.8.23;
 
-import "./BaseRewardsDistributor.sol";
+import "./BaseRewardStreams.sol";
 
-/// @title StakingRewardsDistributor
-/// @notice This contract inherits from BaseRewardsDistributor and implements IStakingRewardsDistributor interface.
+/// @title StakingRewardStreams
+/// @notice This contract inherits from BaseRewardStreams and implements IStakingRewardStreams interface.
 /// It allows for the rewards to be distributed to the rewarded token holders who have staked it.
-contract StakingRewardsDistributor is BaseRewardsDistributor, IStakingRewardsDistributor {
+contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
     using SafeERC20 for IERC20;
     using Set for SetStorage;
 
@@ -17,10 +17,10 @@ contract StakingRewardsDistributor is BaseRewardsDistributor, IStakingRewardsDis
     /// @notice Event emitted when a user unstakes tokens.
     event Unstaked(address indexed account, address indexed rewarded, uint256 amount);
 
-    /// @notice Constructor for the StakingRewardsDistributor contract.
+    /// @notice Constructor for the StakingRewardStreams contract.
     /// @param evc The Ethereum Vault Connector contract.
     /// @param periodDuration The duration of a period.
-    constructor(IEVC evc, uint40 periodDuration) BaseRewardsDistributor(evc, periodDuration) {}
+    constructor(IEVC evc, uint40 periodDuration) BaseRewardStreams(evc, periodDuration) {}
 
     /// @notice Allows a user to stake rewarded tokens.
     /// @dev If the amount is max, the entire balance of the user is staked.

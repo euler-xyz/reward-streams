@@ -2,13 +2,13 @@
 
 pragma solidity ^0.8.23;
 
-import "../../src/NonStakingRewardsDistributor.sol";
+import "../../src/StakingFreeRewardStreams.sol";
 
-contract NonStakingRewardsDistributorHarnessHarness is NonStakingRewardsDistributor {
+contract StakingFreeRewardStreamsHarness is StakingFreeRewardStreams {
     using SafeERC20 for IERC20;
     using Set for SetStorage;
 
-    constructor(IEVC evc, uint40 epochDuration) NonStakingRewardsDistributor(evc, epochDuration) {}
+    constructor(IEVC evc, uint40 epochDuration) StakingFreeRewardStreams(evc, epochDuration) {}
 
     function getBucket(address rewarded, address reward, uint40 index) external view returns (BucketStorage memory) {
         return buckets[rewarded][reward][index];
