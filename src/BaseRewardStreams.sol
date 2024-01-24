@@ -147,14 +147,10 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     /// @param recipient The address to receive the address(0) earned rewards.
     function updateReward(address rewarded, address reward, address recipient) public virtual override {
         address msgSender = _msgSender();
+        uint256 currentBalance = rewards[msgSender][rewarded].contains(reward) ? balances[msgSender][rewarded] : 0;
 
         updateRewardTokenData(
-            msgSender,
-            rewarded,
-            reward,
-            distribution[rewarded][reward].totalEligible,
-            balances[msgSender][rewarded],
-            false
+            msgSender, rewarded, reward, distribution[rewarded][reward].totalEligible, currentBalance, false
         );
 
         claim(address(0), rewarded, reward, recipient);
@@ -173,13 +169,14 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         bool forgiveRecentReward
     ) public virtual override nonReentrant {
         address msgSender = _msgSender();
+        uint256 currentBalance = rewards[msgSender][rewarded].contains(reward) ? balances[msgSender][rewarded] : 0;
 
         updateRewardTokenData(
             msgSender,
             rewarded,
             reward,
             distribution[rewarded][reward].totalEligible,
-            balances[msgSender][rewarded],
+            currentBalance,
             forgiveRecentReward
         );
 
@@ -238,8 +235,10 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         address rewarded,
         address reward
     ) external view virtual override returns (uint256) {
+        uint256 currentBalance = rewards[account][rewarded].contains(reward) ? balances[account][rewarded] : 0;
+
         (, EarnStorage memory earnedCache, uint256 deltaZeroEarnedAmount) = getUpdateRewardTokenData(
-            account, rewarded, reward, distribution[rewarded][reward].totalEligible, balances[account][rewarded], false
+            account, rewarded, reward, distribution[rewarded][reward].totalEligible, currentBalance, false
         );
 
         if (account == address(0)) {
@@ -520,23 +519,15 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
             newDistribution.lastUpdated = uint40(block.timestamp);
         }
 
-        uint256 amount = uint256(newEarned.amount)
-            + (currentUserBalance * uint256(newDistribution.accumulator - newEarned.accumulator)) / SCALER;
+        uint256 amountDelta = currentUserBalance * uint256(newDistribution.accumulator - newEarned.accumulator) / SCALER;
 
-        // give the rest of earned rewards to address(0)
-        if (amount > type(uint96).max) {
-            deltaZeroEarnedAmount += amount - type(uint96).max;
+        // if necessary, give the rest of earned rewards to address(0)
+        if (uint256(newEarned.amount) + amountDelta > type(uint96).max) {
+            deltaZeroEarnedAmount += amountDelta - type(uint96).max;
         }
 
-        newEarned.amount = addEarnedAmount(newEarned.amount, amount);
+        newEarned.amount = addEarnedAmount(newEarned.amount, amountDelta);
         newEarned.accumulator = newDistribution.accumulator;
-    }
-
-    /// @notice Returns the bucket storage index for a given epoch.
-    /// @param epoch The epoch to get the bucket storage index for.
-    /// @return The bucket storage index for the given epoch.
-    function bucketStorageIndex(uint40 epoch) internal pure returns (uint40) {
-        return epoch / 2;
     }
 
     /// @notice Calculates the sum of all elements in the provided array.
@@ -571,6 +562,13 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         }
 
         return uint96(current);
+    }
+
+    /// @notice Returns the bucket storage index for a given epoch.
+    /// @param epoch The epoch to get the bucket storage index for.
+    /// @return The bucket storage index for the given epoch.
+    function bucketStorageIndex(uint40 epoch) internal pure returns (uint40) {
+        return epoch / 2;
     }
 
     /// @notice Retrieves the message sender in the context of the EVC.

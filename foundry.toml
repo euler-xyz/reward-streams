@@ -11,8 +11,9 @@ remappings = [
 ]
 
 [profile.default.fuzz]
-#max_test_rejects = 1_000_000
+max_test_rejects = 1_000_000
 runs = 1000
+seed = "0xee1d0f7d9556539a9c0e26aed5e63556"
 
 [profile.default.fmt]
 line_length = 120
