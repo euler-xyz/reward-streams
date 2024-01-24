@@ -88,7 +88,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         address reward,
         uint40 startEpoch,
         uint128[] calldata rewardAmounts
-    ) public virtual override nonReentrant {
+    ) external virtual override nonReentrant {
         uint40 epoch = currentEpoch();
 
         // if start epoch is 0, set it to the next epoch
@@ -167,7 +167,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         address reward,
         address recipient,
         bool forgiveRecentReward
-    ) public virtual override nonReentrant {
+    ) external virtual override nonReentrant {
         address msgSender = _msgSender();
         uint256 currentBalance = rewards[msgSender][rewarded].contains(reward) ? balances[msgSender][rewarded] : 0;
 
@@ -279,7 +279,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
     /// @return The reward token amount for the rewarded token and current epoch.
-    function rewardAmount(address rewarded, address reward) public view virtual override returns (uint256) {
+    function rewardAmount(address rewarded, address reward) external view virtual override returns (uint256) {
         return rewardAmount(rewarded, reward, currentEpoch());
     }
 

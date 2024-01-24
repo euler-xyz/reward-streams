@@ -33,5 +33,5 @@ interface IStakingFreeRewardStreams is IRewardStreams, IBalanceTracker {}
 
 interface IStakingRewardStreams is IRewardStreams {
     function stake(address rewarded, uint256 amount) external;
-    function unstake(address rewarded, address recipient, uint256 amount, bool forgiveRecentReward) external;
+    function unstake(address rewarded, uint256 amount, address recipient, bool forgiveRecentReward) external;
 }

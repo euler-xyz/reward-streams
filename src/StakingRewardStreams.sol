@@ -26,7 +26,7 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
     /// @dev If the amount is max, the entire balance of the user is staked.
     /// @param rewarded The address of the rewarded token.
     /// @param amount The amount of tokens to stake.
-    function stake(address rewarded, uint256 amount) public virtual override nonReentrant {
+    function stake(address rewarded, uint256 amount) external virtual override nonReentrant {
         address msgSender = _msgSender();
 
         if (amount == 0) {
@@ -68,10 +68,10 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
     /// @param forgiveRecentReward Whether to forgive the recent reward and not update the accumulator.
     function unstake(
         address rewarded,
-        address recipient,
         uint256 amount,
+        address recipient,
         bool forgiveRecentReward
-    ) public virtual override nonReentrant {
+    ) external virtual override nonReentrant {
         address msgSender = _msgSender();
 
         if (amount == 0) {
