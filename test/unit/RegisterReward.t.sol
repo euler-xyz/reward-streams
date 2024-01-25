@@ -91,8 +91,8 @@ contract RegisterRewardTest is Test {
             totalAmount += amounts[i];
         }
 
-        vm.expectEmit(true, true, false, true, address(distributor));
-        emit BaseRewardStreams.RewardRegistered(rewarded, reward, startEpoch, amounts);
+        vm.expectEmit(true, true, true, true, address(distributor));
+        emit BaseRewardStreams.RewardRegistered(seeder, rewarded, reward, startEpoch, amounts);
         distributor.registerReward(rewarded, reward, startEpoch, amounts);
 
         // verify that the total amount was properly transferred
@@ -133,8 +133,8 @@ contract RegisterRewardTest is Test {
         }
 
         uint256 preBalance = MockERC20(reward).balanceOf(address(distributor));
-        vm.expectEmit(true, true, false, true, address(distributor));
-        emit BaseRewardStreams.RewardRegistered(rewarded, reward, distributor.currentEpoch() + 1, amounts);
+        vm.expectEmit(true, true, true, true, address(distributor));
+        emit BaseRewardStreams.RewardRegistered(seeder, rewarded, reward, distributor.currentEpoch() + 1, amounts);
         distributor.registerReward(rewarded, reward, startEpoch, amounts);
 
         // verify that the total amount was properly transferred
@@ -187,8 +187,8 @@ contract RegisterRewardTest is Test {
         }
 
         preBalance = MockERC20(reward).balanceOf(address(distributor));
-        vm.expectEmit(true, true, false, true, address(distributor));
-        emit BaseRewardStreams.RewardRegistered(rewarded, reward, startEpoch, amounts);
+        vm.expectEmit(true, true, true, true, address(distributor));
+        emit BaseRewardStreams.RewardRegistered(seeder, rewarded, reward, startEpoch, amounts);
         distributor.registerReward(rewarded, reward, startEpoch, amounts);
 
         // verify that the total amount was properly transferred

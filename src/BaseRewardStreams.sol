@@ -16,7 +16,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     using Set for SetStorage;
 
     /// @notice Event emitted when a reward scheme is registered.
-    event RewardRegistered(address indexed rewarded, address indexed reward, uint256 startEpoch, uint128[] amounts);
+    event RewardRegistered(address indexed caller, address indexed rewarded, address indexed reward, uint256 startEpoch, uint128[] amounts);
 
     /// @notice Event emitted when a user enables a reward token.
     event RewardEnabled(address indexed account, address indexed rewarded, address indexed reward);
@@ -137,8 +137,9 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         }
 
         // transfer the total amount to be distributed to the contract
+        address msgSender = _msgSender();
         uint256 oldBalance = IERC20(reward).balanceOf(address(this));
-        IERC20(reward).safeTransferFrom(_msgSender(), address(this), totalAmount);
+        IERC20(reward).safeTransferFrom(msgSender, address(this), totalAmount);
 
         if (IERC20(reward).balanceOf(address(this)) - oldBalance != totalAmount) {
             revert InvalidAmount();
@@ -146,6 +147,8 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
 
         // store the amounts to be distributed
         storeAmountsIntoBuckets(rewarded, reward, startEpoch, rewardAmounts);
+
+        emit RewardRegistered(msgSender, rewarded, reward, startEpoch, rewardAmounts);
     }
 
     /// @notice Updates the reward token data.
@@ -376,8 +379,6 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
 
             buckets[rewarded][reward][i] = bucket;
         }
-
-        emit RewardRegistered(rewarded, reward, startEpoch, amountsToBeStored);
     }
 
     /// @notice Claims the earned reward for a specific account, rewarded token, and reward token, and transfers it to
