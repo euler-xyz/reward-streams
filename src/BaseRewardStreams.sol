@@ -46,9 +46,9 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
 
     /// @notice Struct to store totals data.
     struct TotalsStorage {
+        uint256 totalEligible;
         uint128 totalRegistered;
         uint128 totalClaimed;
-        uint256 totalEligible;
     }
 
     /// @notice Struct to store earned data.
@@ -272,14 +272,6 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         return balances[account][rewarded];
     }
 
-    /// @notice Returns the total supply of the rewarded token enabled and eligible to receive the reward token.
-    /// @param rewarded The address of the rewarded token.
-    /// @param reward The address of the reward token.
-    /// @return The total supply of the rewarded token enabled and eligible to receive the reward token.
-    function totalEligible(address rewarded, address reward) external view virtual override returns (uint256) {
-        return totals[rewarded][reward].totalEligible;
-    }
-
     /// @notice Returns the reward token amount for a specific rewarded token and current epoch.
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
@@ -301,6 +293,14 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         BucketStorage memory bucket = buckets[rewarded][reward][bucketStorageIndex(epoch)];
 
         return epoch % 2 == 0 ? bucket.evenAmount : bucket.oddAmount;
+    }
+
+    /// @notice Returns the total supply of the rewarded token enabled and eligible to receive the reward token.
+    /// @param rewarded The address of the rewarded token.
+    /// @param reward The address of the reward token.
+    /// @return The total supply of the rewarded token enabled and eligible to receive the reward token.
+    function totalRewardedEligible(address rewarded, address reward) external view virtual override returns (uint256) {
+        return totals[rewarded][reward].totalEligible;
     }
 
     /// @notice Returns the total reward token amount registered to be distributed for a specific rewarded token.

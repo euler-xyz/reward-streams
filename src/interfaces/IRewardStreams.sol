@@ -13,9 +13,9 @@ interface IRewardStreams {
     function earnedReward(address account, address rewarded, address reward, bool forgiveRecentReward) external view returns (uint256);
     function enabledRewards(address account, address rewarded) external view returns (address[] memory);
     function balanceOf(address account, address rewarded) external view returns (uint256);
-    function totalEligible(address rewarded, address reward) external view returns (uint256);
     function rewardAmount(address rewarded, address reward) external view returns (uint256);
     function rewardAmount(address rewarded, address reward, uint40 epoch) external view returns (uint256);
+    function totalRewardedEligible(address rewarded, address reward) external view returns (uint256);
     function totalRewardRegistered(address rewarded, address reward) external view returns (uint256);
     function totalRewardClaimed(address rewarded, address reward) external view returns (uint256);
     function currentEpoch() external view returns (uint40);
