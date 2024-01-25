@@ -205,8 +205,8 @@ contract ScenarioTest is Test {
         // verify balances and total eligible
         assertEq(stakingDistributor.balanceOf(participant, stakingRewarded), balance);
         assertEq(stakingFreeDistributor.balanceOf(participant, stakingFreeRewarded), balance);
-        assertEq(stakingDistributor.totalEligible(stakingRewarded, reward), balance);
-        assertEq(stakingFreeDistributor.totalEligible(stakingFreeRewarded, reward), balance);
+        assertEq(stakingDistributor.totalRewardedEligible(stakingRewarded, reward), balance);
+        assertEq(stakingFreeDistributor.totalRewardedEligible(stakingFreeRewarded, reward), balance);
 
         // forward the time
         vm.warp(block.timestamp + (uint256(amountsLength) * 10 days) / 2);
@@ -296,8 +296,8 @@ contract ScenarioTest is Test {
         // verify balances and total eligible
         assertEq(stakingDistributor.balanceOf(participant, stakingRewarded), balance);
         assertEq(stakingFreeDistributor.balanceOf(participant, stakingFreeRewarded), balance);
-        assertEq(stakingDistributor.totalEligible(stakingRewarded, reward), 0);
-        assertEq(stakingFreeDistributor.totalEligible(stakingFreeRewarded, reward), 0);
+        assertEq(stakingDistributor.totalRewardedEligible(stakingRewarded, reward), 0);
+        assertEq(stakingFreeDistributor.totalRewardedEligible(stakingFreeRewarded, reward), 0);
 
         // enable rewards
         stakingDistributor.enableReward(stakingRewarded, reward);
@@ -306,8 +306,8 @@ contract ScenarioTest is Test {
         // verify balances and total eligible
         assertEq(stakingDistributor.balanceOf(participant, stakingRewarded), balance);
         assertEq(stakingFreeDistributor.balanceOf(participant, stakingFreeRewarded), balance);
-        assertEq(stakingDistributor.totalEligible(stakingRewarded, reward), balance);
-        assertEq(stakingFreeDistributor.totalEligible(stakingFreeRewarded, reward), balance);
+        assertEq(stakingDistributor.totalRewardedEligible(stakingRewarded, reward), balance);
+        assertEq(stakingFreeDistributor.totalRewardedEligible(stakingFreeRewarded, reward), balance);
 
         // unstake and disable balance forwarding
         stakingDistributor.unstake(stakingRewarded, balance, participant, false);
@@ -316,8 +316,8 @@ contract ScenarioTest is Test {
         // verify balances and total eligible
         assertEq(stakingDistributor.balanceOf(participant, stakingRewarded), 0);
         assertEq(stakingFreeDistributor.balanceOf(participant, stakingFreeRewarded), 0);
-        assertEq(stakingDistributor.totalEligible(stakingRewarded, reward), 0);
-        assertEq(stakingFreeDistributor.totalEligible(stakingFreeRewarded, reward), 0);
+        assertEq(stakingDistributor.totalRewardedEligible(stakingRewarded, reward), 0);
+        assertEq(stakingFreeDistributor.totalRewardedEligible(stakingFreeRewarded, reward), 0);
 
         // disable rewards
         stakingDistributor.disableReward(stakingRewarded, reward, false);
@@ -326,8 +326,8 @@ contract ScenarioTest is Test {
         // verify balances and total eligible
         assertEq(stakingDistributor.balanceOf(participant, stakingRewarded), 0);
         assertEq(stakingFreeDistributor.balanceOf(participant, stakingFreeRewarded), 0);
-        assertEq(stakingDistributor.totalEligible(stakingRewarded, reward), 0);
-        assertEq(stakingFreeDistributor.totalEligible(stakingFreeRewarded, reward), 0);
+        assertEq(stakingDistributor.totalRewardedEligible(stakingRewarded, reward), 0);
+        assertEq(stakingFreeDistributor.totalRewardedEligible(stakingFreeRewarded, reward), 0);
     }
 
     // single rewarded and single reward; one participant who doesn't earn all the time
@@ -444,8 +444,8 @@ contract ScenarioTest is Test {
         // verify balances and total eligible
         assertApproxEqAbs(stakingDistributor.balanceOf(participant, stakingRewarded), balance / 2, 1);
         assertApproxEqAbs(stakingFreeDistributor.balanceOf(participant, stakingFreeRewarded), balance / 2, 1);
-        assertApproxEqAbs(stakingDistributor.totalEligible(stakingRewarded, reward), balance / 2, 1);
-        assertApproxEqAbs(stakingFreeDistributor.totalEligible(stakingFreeRewarded, reward), balance / 2, 1);
+        assertApproxEqAbs(stakingDistributor.totalRewardedEligible(stakingRewarded, reward), balance / 2, 1);
+        assertApproxEqAbs(stakingFreeDistributor.totalRewardedEligible(stakingFreeRewarded, reward), balance / 2, 1);
     }
 
     // single rewarded and single reward; multiple participants who don't earn all the time (hence address(0) earns some
@@ -921,8 +921,8 @@ contract ScenarioTest is Test {
         assertEq(stakingDistributor.balanceOf(participant2, stakingRewarded), 5e18);
         assertEq(stakingFreeDistributor.balanceOf(participant1, stakingFreeRewarded), 5e18);
         assertEq(stakingFreeDistributor.balanceOf(participant2, stakingFreeRewarded), 0);
-        assertEq(stakingDistributor.totalEligible(stakingRewarded, reward), 0);
-        assertEq(stakingFreeDistributor.totalEligible(stakingFreeRewarded, reward), 0);
+        assertEq(stakingDistributor.totalRewardedEligible(stakingRewarded, reward), 0);
+        assertEq(stakingFreeDistributor.totalRewardedEligible(stakingFreeRewarded, reward), 0);
         assertEq(stakingDistributor.totalRewardRegistered(stakingRewarded, reward), 45e18);
         assertEq(stakingFreeDistributor.totalRewardRegistered(stakingFreeRewarded, reward), 45e18);
         assertApproxEqRel(stakingDistributor.totalRewardClaimed(stakingRewarded, reward), 45e18, ALLOWED_DELTA);
@@ -1675,10 +1675,10 @@ contract ScenarioTest is Test {
         assertEq(stakingDistributor.balanceOf(participant2, stakingRewarded), 1e18);
         assertEq(stakingFreeDistributor.balanceOf(participant1, stakingFreeRewarded), 2e18);
         assertEq(stakingFreeDistributor.balanceOf(participant2, stakingFreeRewarded), 1e18);
-        assertEq(stakingDistributor.totalEligible(stakingRewarded, reward), 0);
-        assertEq(stakingFreeDistributor.totalEligible(stakingFreeRewarded, reward), 0);
-        assertEq(stakingDistributor.totalEligible(stakingRewarded, reward2), 1e18);
-        assertEq(stakingFreeDistributor.totalEligible(stakingFreeRewarded, reward2), 1e18);
+        assertEq(stakingDistributor.totalRewardedEligible(stakingRewarded, reward), 0);
+        assertEq(stakingFreeDistributor.totalRewardedEligible(stakingFreeRewarded, reward), 0);
+        assertEq(stakingDistributor.totalRewardedEligible(stakingRewarded, reward2), 1e18);
+        assertEq(stakingFreeDistributor.totalRewardedEligible(stakingFreeRewarded, reward2), 1e18);
         assertEq(stakingDistributor.totalRewardRegistered(stakingRewarded, reward), 19e18);
         assertEq(stakingFreeDistributor.totalRewardRegistered(stakingFreeRewarded, reward), 19e18);
         assertEq(stakingDistributor.totalRewardRegistered(stakingRewarded, reward2), 19e18);
@@ -1985,8 +1985,8 @@ contract ScenarioTest is Test {
         assertEq(stakingFreeDistributor.balanceOf(participant1, stakingFreeRewarded), 1e18);
         assertEq(stakingFreeDistributor.balanceOf(participant2, stakingFreeRewarded), 4e18);
         assertEq(stakingFreeDistributor.balanceOf(participant3, stakingFreeRewarded), 5e18);
-        assertEq(stakingDistributor.totalEligible(stakingRewarded, reward), 1e18);
-        assertEq(stakingFreeDistributor.totalEligible(stakingFreeRewarded, reward), 1e18);
+        assertEq(stakingDistributor.totalRewardedEligible(stakingRewarded, reward), 1e18);
+        assertEq(stakingFreeDistributor.totalRewardedEligible(stakingFreeRewarded, reward), 1e18);
         assertEq(stakingDistributor.totalRewardRegistered(stakingRewarded, reward), 35e18);
         assertEq(stakingFreeDistributor.totalRewardRegistered(stakingFreeRewarded, reward), 35e18);
         assertApproxEqRel(stakingDistributor.totalRewardClaimed(stakingRewarded, reward), 22e18, ALLOWED_DELTA);
@@ -2398,5 +2398,77 @@ contract ScenarioTest is Test {
             stakingFreeRewarded, participant, stakingFreeRewarded, 10e18
         );
         assertEq(MockERC20(stakingFreeRewarded).balanceOf(participant), preBalance - 10e18);
+    }
+
+    function test_Scenario_Overflow(uint256 blockTimestamp, address participant) external {
+        vm.assume(
+            participant != address(0) && participant != address(evc) && participant != address(stakingDistributor)
+                && participant != stakingRewarded
+        );
+        blockTimestamp = uint40(bound(blockTimestamp, 1, type(uint40).max - 365 days));
+
+        // mint more reward tokens to the seeder
+        MockERC20(reward).mint(seeder, type(uint256).max - MockERC20(reward).balanceOf(seeder));
+
+        // mint the staking free rewarded token to the participant
+        MockERC20(stakingFreeRewarded).mint(participant, 10e18);
+
+        // mint the tokens to the participant
+        vm.startPrank(participant);
+        MockERC20(stakingRewarded).mint(participant, 10e18);
+        MockERC20(stakingRewarded).approve(address(stakingDistributor), type(uint256).max);
+        vm.stopPrank();
+
+        vm.warp(blockTimestamp);
+
+        // prepare the amounts; 3 epochs
+        uint128[] memory amounts = new uint128[](3);
+        amounts[0] = type(uint96).max / 2 + 1;
+        amounts[1] = type(uint96).max / 2 + 1;
+        amounts[2] = type(uint96).max / 2 + 1;
+
+        // register the distribution schemes in both distributors
+        vm.startPrank(seeder);
+        stakingDistributor.registerReward(stakingRewarded, reward, 0, amounts);
+        stakingFreeDistributor.registerReward(stakingFreeRewarded, reward, 0, amounts);
+        vm.stopPrank();
+
+        // forward the time to the start of the distribution scheme
+        vm.warp(stakingDistributor.getEpochStartTimestamp(stakingDistributor.currentEpoch() + 1));
+
+        // enable rewards and stake
+        vm.startPrank(participant);
+        stakingDistributor.enableReward(stakingRewarded, reward);
+        stakingDistributor.stake(stakingRewarded, 1e18);
+
+        MockERC20BalanceForwarder(stakingFreeRewarded).enableBalanceForwarding();
+        stakingFreeDistributor.enableReward(stakingFreeRewarded, reward);
+
+        // forward the time to the end of the distribution scheme
+        vm.warp(block.timestamp + 30 days);
+
+        // disable rewards. when updating, the amount earned will overflow and the excess amount will be credited to
+        // address(0)
+        stakingDistributor.disableReward(stakingRewarded, reward, false);
+        stakingFreeDistributor.disableReward(stakingFreeRewarded, reward, false);
+        vm.stopPrank();
+
+        // verify earnings
+        assertApproxEqRel(
+            stakingDistributor.earnedReward(participant, stakingRewarded, reward, false), type(uint96).max, 0
+        );
+        assertApproxEqRel(
+            stakingFreeDistributor.earnedReward(participant, stakingFreeRewarded, reward, false), type(uint96).max, 0
+        );
+        assertApproxEqRel(
+            stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false),
+            stakingDistributor.totalRewardRegistered(stakingRewarded, reward) - type(uint96).max,
+            0
+        );
+        assertApproxEqRel(
+            stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false),
+            stakingFreeDistributor.totalRewardRegistered(stakingFreeRewarded, reward) - type(uint96).max,
+            0
+        );
     }
 }

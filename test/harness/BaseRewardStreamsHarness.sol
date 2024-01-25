@@ -61,4 +61,8 @@ contract BaseRewardStreamsHarness is BaseRewardStreams {
     function setEarned(address account, address rewarded, address reward, EarnStorage calldata earnStorage) external {
         earned[account][rewarded][reward] = earnStorage;
     }
+
+    function msgSender() external view returns (address) {
+        return _msgSender();
+    }
 }
