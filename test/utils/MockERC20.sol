@@ -70,7 +70,7 @@ contract MockERC20BalanceForwarder is MockERC20, IBalanceForwarder {
         super._update(from, to, value);
 
         if (forwardingEnabled[from]) {
-            balanceTracker.balanceTrackerHook(from, balanceOf(from), false);
+            balanceTracker.balanceTrackerHook(from, balanceOf(from), evc.isControlCollateralInProgress());
         }
 
         if (from != to && forwardingEnabled[to]) {

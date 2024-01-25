@@ -40,11 +40,11 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
 
         for (uint256 i; i < rewardsArray.length; ++i) {
             address reward = rewardsArray[i];
-            uint256 currentTotal = distribution[rewarded][reward].totalEligible;
+            uint256 currentTotal = totals[rewarded][reward].totalEligible;
 
             updateRewardTokenData(msgSender, rewarded, reward, currentTotal, currentBalance, false);
 
-            distribution[rewarded][reward].totalEligible = currentTotal + amount;
+            totals[rewarded][reward].totalEligible = currentTotal + amount;
         }
 
         balances[msgSender][rewarded] = currentBalance + amount;
@@ -85,11 +85,11 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
 
         for (uint256 i; i < rewardsArray.length; ++i) {
             address reward = rewardsArray[i];
-            uint256 currentTotal = distribution[rewarded][reward].totalEligible;
+            uint256 currentTotal = totals[rewarded][reward].totalEligible;
 
             updateRewardTokenData(msgSender, rewarded, reward, currentTotal, currentBalance, forgiveRecentReward);
 
-            distribution[rewarded][reward].totalEligible = currentTotal - amount;
+            totals[rewarded][reward].totalEligible = currentTotal - amount;
         }
 
         balances[msgSender][rewarded] = currentBalance - amount;

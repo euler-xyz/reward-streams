@@ -42,6 +42,10 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     struct DistributionStorage {
         uint40 lastUpdated;
         uint160 accumulator;
+    }
+
+    /// @notice Struct to store totals data.
+    struct TotalsStorage {
         uint128 totalRegistered;
         uint128 totalClaimed;
         uint256 totalEligible;
@@ -62,6 +66,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
 
     mapping(address rewarded => mapping(address reward => mapping(uint256 index => BucketStorage))) internal buckets;
     mapping(address rewarded => mapping(address reward => DistributionStorage)) internal distribution;
+    mapping(address rewarded => mapping(address reward => TotalsStorage)) internal totals;
     mapping(address account => mapping(address rewarded => SetStorage)) internal rewards;
     mapping(address account => mapping(address rewarded => uint256)) internal balances;
     mapping(address account => mapping(address rewarded => mapping(address reward => EarnStorage))) internal earned;
@@ -107,24 +112,27 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         }
 
         // calculate the total amount to be distributed in this distribution scheme
-        uint128 totalAmount = sum(rewardAmounts);
+        uint256 totalAmount = 0;
+        for (uint256 i; i < rewardAmounts.length; ++i) {
+            totalAmount += rewardAmounts[i];
+        }
+
+        if (totalAmount == 0) {
+            revert InvalidAmount();
+        }
 
         // initialize or update the data
         if (distribution[rewarded][reward].lastUpdated == 0) {
-            distribution[rewarded][reward] = DistributionStorage({
-                lastUpdated: uint40(block.timestamp),
-                accumulator: 0,
-                totalRegistered: totalAmount,
-                totalClaimed: 0,
-                totalEligible: 0
-            });
+            distribution[rewarded][reward].lastUpdated = uint40(block.timestamp);
         } else {
             updateReward(rewarded, reward, address(0));
-            distribution[rewarded][reward].totalRegistered += totalAmount;
         }
 
+        uint256 totalRegistered = uint256(totals[rewarded][reward].totalRegistered) + totalAmount;
+        totals[rewarded][reward].totalRegistered = uint128(totalRegistered);
+
         // sanity check for overflow (assumes supply of 1 which is the worst case scenario)
-        if (SCALER * distribution[rewarded][reward].totalRegistered > type(uint160).max) {
+        if (SCALER * totalRegistered > type(uint160).max) {
             revert AccumulatorOverflow();
         }
 
@@ -150,7 +158,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         uint256 currentBalance = rewards[msgSender][rewarded].contains(reward) ? balances[msgSender][rewarded] : 0;
 
         updateRewardTokenData(
-            msgSender, rewarded, reward, distribution[rewarded][reward].totalEligible, currentBalance, false
+            msgSender, rewarded, reward, totals[rewarded][reward].totalEligible, currentBalance, false
         );
 
         claim(address(0), rewarded, reward, recipient);
@@ -172,12 +180,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         uint256 currentBalance = rewards[msgSender][rewarded].contains(reward) ? balances[msgSender][rewarded] : 0;
 
         updateRewardTokenData(
-            msgSender,
-            rewarded,
-            reward,
-            distribution[rewarded][reward].totalEligible,
-            currentBalance,
-            forgiveRecentReward
+            msgSender, rewarded, reward, totals[rewarded][reward].totalEligible, currentBalance, forgiveRecentReward
         );
 
         claim(msgSender, rewarded, reward, recipient);
@@ -196,11 +199,11 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
             }
 
             uint256 currentBalance = balances[msgSender][rewarded];
-            uint256 currentTotal = distribution[rewarded][reward].totalEligible;
+            uint256 currentTotal = totals[rewarded][reward].totalEligible;
 
             updateRewardTokenData(msgSender, rewarded, reward, currentTotal, 0, false);
 
-            distribution[rewarded][reward].totalEligible = currentTotal + currentBalance;
+            totals[rewarded][reward].totalEligible = currentTotal + currentBalance;
 
             emit RewardEnabled(msgSender, rewarded, reward);
         }
@@ -215,11 +218,11 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
 
         if (rewards[msgSender][rewarded].remove(reward)) {
             uint256 currentBalance = balances[msgSender][rewarded];
-            uint256 currentTotal = distribution[rewarded][reward].totalEligible;
+            uint256 currentTotal = totals[rewarded][reward].totalEligible;
 
             updateRewardTokenData(msgSender, rewarded, reward, currentTotal, currentBalance, forgiveRecentReward);
 
-            distribution[rewarded][reward].totalEligible = currentTotal - currentBalance;
+            totals[rewarded][reward].totalEligible = currentTotal - currentBalance;
 
             emit RewardDisabled(msgSender, rewarded, reward);
         }
@@ -229,16 +232,18 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     /// @param account The address of the account.
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
+    /// @param forgiveRecentReward Whether to forgive the recent reward and not update the accumulator.
     /// @return The earned reward token amount for the account and rewarded token.
     function earnedReward(
         address account,
         address rewarded,
-        address reward
+        address reward,
+        bool forgiveRecentReward
     ) external view virtual override returns (uint256) {
         uint256 currentBalance = rewards[account][rewarded].contains(reward) ? balances[account][rewarded] : 0;
 
         (, EarnStorage memory earnedCache, uint256 deltaZeroEarnedAmount) = getUpdateRewardTokenData(
-            account, rewarded, reward, distribution[rewarded][reward].totalEligible, currentBalance, false
+            account, rewarded, reward, totals[rewarded][reward].totalEligible, currentBalance, forgiveRecentReward
         );
 
         if (account == address(0)) {
@@ -272,7 +277,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     /// @param reward The address of the reward token.
     /// @return The total supply of the rewarded token enabled and eligible to receive the reward token.
     function totalEligible(address rewarded, address reward) external view virtual override returns (uint256) {
-        return distribution[rewarded][reward].totalEligible;
+        return totals[rewarded][reward].totalEligible;
     }
 
     /// @notice Returns the reward token amount for a specific rewarded token and current epoch.
@@ -303,7 +308,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     /// @param reward The address of the reward token.
     /// @return The total reward token amount distributed for the rewarded token.
     function totalRewardRegistered(address rewarded, address reward) external view returns (uint256) {
-        return distribution[rewarded][reward].totalRegistered;
+        return totals[rewarded][reward].totalRegistered;
     }
 
     /// @notice Returns the total reward token amount claimed for a specific rewarded token.
@@ -311,7 +316,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     /// @param reward The address of the reward token.
     /// @return The total reward token amount claimed for the rewarded token.
     function totalRewardClaimed(address rewarded, address reward) external view returns (uint256) {
-        return distribution[rewarded][reward].totalClaimed;
+        return totals[rewarded][reward].totalClaimed;
     }
 
     /// @notice Returns the current epoch based on the block timestamp.
@@ -391,12 +396,12 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
 
         // If there is a reward token to claim, transfer it to the recipient and emit an event.
         if (amount > 0) {
-            uint128 totalRegistered = distribution[rewarded][reward].totalRegistered;
-            uint128 totalClaimed = distribution[rewarded][reward].totalClaimed;
+            uint128 totalRegistered = totals[rewarded][reward].totalRegistered;
+            uint128 totalClaimed = totals[rewarded][reward].totalClaimed;
 
             assert(totalRegistered >= totalClaimed + amount);
 
-            distribution[rewarded][reward].totalClaimed = totalClaimed + amount;
+            totals[rewarded][reward].totalClaimed = totalClaimed + amount;
             earned[msgSender][rewarded][reward].amount = 0;
 
             IERC20(reward).safeTransfer(recipient, amount);
@@ -528,24 +533,6 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
 
         newEarned.amount = addEarnedAmount(newEarned.amount, amountDelta);
         newEarned.accumulator = newDistribution.accumulator;
-    }
-
-    /// @notice Calculates the sum of all elements in the provided array.
-    /// @dev This function will revert with InvalidAmount() if the total sum is 0 or exceeds the maximum value for
-    /// uint128.
-    /// @param amounts An array of uint128 values to be summed.
-    /// @return The sum of all elements in the provided array.
-    function sum(uint128[] calldata amounts) internal pure returns (uint128) {
-        uint256 total;
-        for (uint256 i; i < amounts.length; ++i) {
-            total += amounts[i];
-        }
-
-        if (total == 0 || total > type(uint128).max) {
-            revert InvalidAmount();
-        }
-
-        return uint128(total);
     }
 
     /// @notice Adds the given delta to the current earned amount.

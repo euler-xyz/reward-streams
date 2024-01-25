@@ -1,21 +1,16 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.23;
 
 import "./IBalanceTracker.sol";
 
 interface IRewardStreams {
-    function registerReward(
-        address rewarded,
-        address reward,
-        uint40 startEpoch,
-        uint128[] calldata rewardAmounts
-    ) external;
+    function registerReward(address rewarded, address reward, uint40 startEpoch, uint128[] calldata rewardAmounts) external;
     function updateReward(address rewarded, address reward, address recipient) external;
     function claimReward(address rewarded, address reward, address recipient, bool forgiveRecentReward) external;
     function enableReward(address rewarded, address reward) external;
     function disableReward(address rewarded, address reward, bool forgiveRecentReward) external;
-    function earnedReward(address account, address rewarded, address reward) external view returns (uint256);
+    function earnedReward(address account, address rewarded, address reward, bool forgiveRecentReward) external view returns (uint256);
     function enabledRewards(address account, address rewarded) external view returns (address[] memory);
     function balanceOf(address account, address rewarded) external view returns (uint256);
     function totalEligible(address rewarded, address reward) external view returns (uint256);

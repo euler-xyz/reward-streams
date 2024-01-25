@@ -25,3 +25,6 @@ quote_style = "double"
 number_underscore = "preserve"
 override_spacing = true
 wrap_comments = true
+ignore = [
+    "src/interfaces/IRewardStreams.sol"
+]

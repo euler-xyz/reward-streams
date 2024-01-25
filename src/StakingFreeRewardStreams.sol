@@ -33,11 +33,11 @@ contract StakingFreeRewardStreams is BaseRewardStreams, IStakingFreeRewardStream
 
         for (uint256 i; i < rewardsArray.length; ++i) {
             address reward = rewardsArray[i];
-            uint256 currentTotal = distribution[rewarded][reward].totalEligible;
+            uint256 currentTotal = totals[rewarded][reward].totalEligible;
 
             updateRewardTokenData(account, rewarded, reward, currentTotal, currentBalance, forgiveRecentReward);
 
-            distribution[rewarded][reward].totalEligible = currentTotal + newBalance - currentBalance;
+            totals[rewarded][reward].totalEligible = currentTotal + newBalance - currentBalance;
         }
 
         balances[account][rewarded] = newBalance;

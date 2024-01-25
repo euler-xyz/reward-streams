@@ -24,7 +24,7 @@ contract RegisterRewardTest is Test {
         vm.label(rewarded, "REWARDED");
 
         reward = address(new MockERC20("Reward", "RWD"));
-        vm.label(rewarded, "REWARD");
+        vm.label(reward, "REWARD");
 
         seeder = vm.addr(0xabcdef);
         vm.label(seeder, "SEEDER");
@@ -98,17 +98,15 @@ contract RegisterRewardTest is Test {
         // verify that the total amount was properly transferred
         assertEq(MockERC20(reward).balanceOf(address(distributor)), totalAmount);
 
-        // verify that the distribution storage was properly initialized
+        // verify that the distribution and totals storage were properly initialized
         assertEq(
             abi.encode(distributor.getDistribution(rewarded, reward)),
+            abi.encode(BaseRewardStreams.DistributionStorage({lastUpdated: uint40(block.timestamp), accumulator: 0}))
+        );
+        assertEq(
+            abi.encode(distributor.getTotals(rewarded, reward)),
             abi.encode(
-                BaseRewardStreams.DistributionStorage({
-                    lastUpdated: uint40(block.timestamp),
-                    accumulator: 0,
-                    totalRegistered: totalAmount,
-                    totalClaimed: 0,
-                    totalEligible: 0
-                })
+                BaseRewardStreams.TotalsStorage({totalRegistered: totalAmount, totalClaimed: 0, totalEligible: 0})
             )
         );
 
@@ -142,13 +140,15 @@ contract RegisterRewardTest is Test {
         // verify that the total amount was properly transferred
         assertEq(MockERC20(reward).balanceOf(address(distributor)), preBalance + totalAmount);
 
-        // verify that the distribution storage was properly updated (no time elapsed)
+        // verify that the totals storage was properly updated (no time elapsed)
         assertEq(
             abi.encode(distributor.getDistribution(rewarded, reward)),
+            abi.encode(BaseRewardStreams.DistributionStorage({lastUpdated: uint40(block.timestamp), accumulator: 0}))
+        );
+        assertEq(
+            abi.encode(distributor.getTotals(rewarded, reward)),
             abi.encode(
-                BaseRewardStreams.DistributionStorage({
-                    lastUpdated: uint40(block.timestamp),
-                    accumulator: 0,
+                BaseRewardStreams.TotalsStorage({
                     totalRegistered: uint128(preBalance) + totalAmount,
                     totalClaimed: 0,
                     totalEligible: 0
@@ -194,13 +194,16 @@ contract RegisterRewardTest is Test {
         // verify that the total amount was properly transferred
         assertEq(MockERC20(reward).balanceOf(address(distributor)), preBalance + totalAmount);
 
-        // verify that the distribution storage was properly updated (considering that some has time elapsed)
-        BaseRewardStreams.DistributionStorage memory distribution = distributor.getDistribution(rewarded, reward);
-        assertEq(distribution.lastUpdated, uint40(block.timestamp));
-        assertGt(distribution.accumulator, 0);
-        assertEq(distribution.totalRegistered, uint128(preBalance) + totalAmount);
-        assertEq(distribution.totalClaimed, 0);
-        assertEq(distribution.totalEligible, 0);
+        // verify that the totals storage was properly updated (considering that some has time elapsed)
+        {
+            BaseRewardStreams.DistributionStorage memory distribution = distributor.getDistribution(rewarded, reward);
+            BaseRewardStreams.TotalsStorage memory totals = distributor.getTotals(rewarded, reward);
+            assertEq(distribution.lastUpdated, uint40(block.timestamp));
+            assertGt(distribution.accumulator, 0);
+            assertEq(totals.totalRegistered, uint128(preBalance) + totalAmount);
+            assertEq(totals.totalClaimed, 0);
+            assertEq(totals.totalEligible, 0);
+        }
 
         // verify that the seeder earned storage was properly updated too
         assertGt(distributor.getEarned(seeder, rewarded, reward).accumulator, 0);
@@ -278,17 +281,6 @@ contract RegisterRewardTest is Test {
         vm.expectRevert(BaseRewardStreams.InvalidAmount.selector);
         distributor.registerReward(rewarded, reward, 0, amounts);
         vm.stopPrank();
-
-        // total amount is greater than type(uint128).max which is also invalid
-        if (amounts.length > 1) {
-            amounts[0] = type(uint128).max;
-            amounts[1] = 1;
-        }
-
-        vm.startPrank(seeder);
-        vm.expectRevert(BaseRewardStreams.InvalidAmount.selector);
-        distributor.registerReward(rewarded, reward, 0, amounts);
-        vm.stopPrank();
     }
 
     function test_RevertIfAccumulatorOverflows_RegisterReward() external {
@@ -296,15 +288,16 @@ contract RegisterRewardTest is Test {
         amounts[0] = 1;
 
         // initialize the distribution data and set the total registered amount to the max value
-        BaseRewardStreams.DistributionStorage memory distribution = BaseRewardStreams.DistributionStorage({
-            lastUpdated: uint40(1),
-            accumulator: 0,
+        BaseRewardStreams.DistributionStorage memory distribution =
+            BaseRewardStreams.DistributionStorage({lastUpdated: uint40(1), accumulator: 0});
+        BaseRewardStreams.TotalsStorage memory totals = BaseRewardStreams.TotalsStorage({
             totalRegistered: uint128(type(uint160).max / 1e18),
             totalClaimed: 0,
             totalEligible: 0
         });
 
         distributor.setDistribution(rewarded, reward, distribution);
+        distributor.setTotals(rewarded, reward, totals);
 
         vm.startPrank(seeder);
         vm.expectRevert(BaseRewardStreams.AccumulatorOverflow.selector);
@@ -312,8 +305,8 @@ contract RegisterRewardTest is Test {
         vm.stopPrank();
 
         // accumulator doesn't overflow if the total registered amount is less than the max value
-        distribution.totalRegistered -= 1;
-        distributor.setDistribution(rewarded, reward, distribution);
+        totals.totalRegistered -= 1;
+        distributor.setTotals(rewarded, reward, totals);
 
         vm.startPrank(seeder);
         distributor.registerReward(rewarded, reward, 0, amounts);
