@@ -4,6 +4,9 @@ pragma solidity ^0.8.23;
 
 import "./IBalanceTracker.sol";
 
+/// @title IRewardStreams
+/// @author Euler Labs (https://www.eulerlabs.com/)
+/// @notice Interface for Reward Streams distributor contract
 interface IRewardStreams {
     function registerReward(address rewarded, address reward, uint40 startEpoch, uint128[] calldata rewardAmounts) external;
     function updateReward(address rewarded, address reward, address recipient) external;
@@ -24,8 +27,14 @@ interface IRewardStreams {
     function getEpochEndTimestamp(uint40 epoch) external view returns (uint40);
 }
 
+/// @title IStakingFreeRewardStreams
+/// @author Euler Labs (https://www.eulerlabs.com/)
+/// @notice Interface for Staking Free Reward Streams, extends IRewardStreams and IBalanceTracker
 interface IStakingFreeRewardStreams is IRewardStreams, IBalanceTracker {}
 
+/// @title IStakingRewardStreams
+/// @author Euler Labs (https://www.eulerlabs.com/)
+/// @notice Interface for Staking Reward Streams, extends IRewardStreams with staking functionality
 interface IStakingRewardStreams is IRewardStreams {
     function stake(address rewarded, uint256 amount) external;
     function unstake(address rewarded, uint256 amount, address recipient, bool forgiveRecentReward) external;

@@ -9,6 +9,7 @@ import "evc/interfaces/IEthereumVaultConnector.sol";
 import "./interfaces/IRewardStreams.sol";
 
 /// @title BaseRewardStreams
+/// @author Euler Labs (https://www.eulerlabs.com/)
 /// @notice This contract is a base class for rewards distributors that allow anyone to register a reward scheme for a
 /// rewarded token.
 abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
@@ -16,7 +17,9 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     using Set for SetStorage;
 
     /// @notice Event emitted when a reward scheme is registered.
-    event RewardRegistered(address indexed caller, address indexed rewarded, address indexed reward, uint256 startEpoch, uint128[] amounts);
+    event RewardRegistered(
+        address indexed caller, address indexed rewarded, address indexed reward, uint256 startEpoch, uint128[] amounts
+    );
 
     /// @notice Event emitted when a user enables a reward token.
     event RewardEnabled(address indexed account, address indexed rewarded, address indexed reward);

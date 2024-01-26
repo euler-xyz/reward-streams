@@ -5,6 +5,7 @@ pragma solidity ^0.8.23;
 import "./BaseRewardStreams.sol";
 
 /// @title StakingRewardStreams
+/// @author Euler Labs (https://www.eulerlabs.com/)
 /// @notice This contract inherits from BaseRewardStreams and implements IStakingRewardStreams interface.
 /// It allows for the rewards to be distributed to the rewarded token holders who have staked it.
 contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {

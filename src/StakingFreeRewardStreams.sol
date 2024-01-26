@@ -6,6 +6,7 @@ import "./BaseRewardStreams.sol";
 import "./interfaces/IBalanceForwarder.sol";
 
 /// @title StakingFreeRewardStreams
+/// @author Euler Labs (https://www.eulerlabs.com/)
 /// @notice This contract inherits from BaseRewardStreams and implements IStakingFreeRewardStreams interface. It
 /// allows for the rewards to be distributed to the rewarded token holders without a need to stake the shares. The
 /// rewarded token contract must be compatible with the Balance Forwarder interface and the balanceTrackerHook function.

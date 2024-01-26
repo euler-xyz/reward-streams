@@ -2,7 +2,9 @@
 
 pragma solidity ^0.8.23;
 
-/// @title Interface for the Balance Tracker
+/// @title IBalanceTracker
+/// @author Euler Labs (https://www.eulerlabs.com/)
+/// @notice Provides an interface for tracking the balance of accounts
 interface IBalanceTracker {
     /// @notice Executes the balance tracking hook for an account
     /// @dev This function is called by the Balance Forwarder contract which was enabled for the account
