@@ -235,7 +235,7 @@ contract RegisterRewardTest is Test {
         vm.stopPrank();
 
         vm.startPrank(seeder);
-        startEpoch = distributor.currentEpoch() + distributor.MAX_EPOCHS_AHEAD() + 1;
+        startEpoch = uint40(distributor.currentEpoch() + distributor.MAX_EPOCHS_AHEAD() + 1);
         vm.expectRevert(BaseRewardStreams.InvalidEpoch.selector);
         distributor.registerReward(rewarded, reward, startEpoch, amounts);
         vm.stopPrank();
@@ -252,7 +252,7 @@ contract RegisterRewardTest is Test {
         vm.stopPrank();
 
         vm.startPrank(seeder);
-        startEpoch = distributor.currentEpoch() + distributor.MAX_EPOCHS_AHEAD();
+        startEpoch = uint40(distributor.currentEpoch() + distributor.MAX_EPOCHS_AHEAD());
         distributor.registerReward(rewarded, reward, startEpoch, amounts);
         vm.stopPrank();
     }

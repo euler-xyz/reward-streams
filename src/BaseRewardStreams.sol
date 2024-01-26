@@ -16,6 +16,14 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using Set for SetStorage;
 
+    IEVC public immutable EVC;
+    uint256 public immutable EPOCH_DURATION;
+    uint256 public constant EPOCHS_PER_BUCKET = 2;
+    uint256 public constant MAX_EPOCHS_AHEAD = 5;
+    uint256 public constant MAX_DISTRIBUTION_LENGTH = 25;
+    uint256 public constant MAX_REWARDS_ENABLED = 5;
+    uint256 internal constant SCALER = 1e18;
+
     /// @notice Event emitted when a reward scheme is registered.
     event RewardRegistered(
         address indexed caller, address indexed rewarded, address indexed reward, uint256 startEpoch, uint128[] amounts
@@ -34,12 +42,6 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     error InvalidAmount();
     error AccumulatorOverflow();
     error TooManyRewardsEnabled();
-
-    /// @notice Struct to store reward token amounts for even and odd epochs.
-    struct BucketStorage {
-        uint128 evenAmount;
-        uint128 oddAmount;
-    }
 
     /// @notice Struct to store distribution data.
     struct DistributionStorage {
@@ -60,14 +62,8 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         uint160 accumulator;
     }
 
-    IEVC public immutable EVC;
-    uint40 public immutable EPOCH_DURATION;
-    uint40 public constant MAX_EPOCHS_AHEAD = 5;
-    uint256 public constant MAX_DISTRIBUTION_LENGTH = 25;
-    uint256 public constant MAX_REWARDS_ENABLED = 5;
-    uint256 internal constant SCALER = 1e18;
-
-    mapping(address rewarded => mapping(address reward => mapping(uint256 index => BucketStorage))) internal buckets;
+    mapping(address rewarded => mapping(address reward => mapping(uint256 storageIndex => uint128[EPOCHS_PER_BUCKET])))
+        internal buckets;
     mapping(address rewarded => mapping(address reward => DistributionStorage)) internal distribution;
     mapping(address rewarded => mapping(address reward => TotalsStorage)) internal totals;
     mapping(address account => mapping(address rewarded => SetStorage)) internal rewards;
@@ -139,6 +135,9 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
             revert AccumulatorOverflow();
         }
 
+        // store the amounts to be distributed
+        storeAmountsIntoBuckets(rewarded, reward, startEpoch, rewardAmounts);
+
         // transfer the total amount to be distributed to the contract
         address msgSender = _msgSender();
         uint256 oldBalance = IERC20(reward).balanceOf(address(this));
@@ -147,9 +146,6 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         if (IERC20(reward).balanceOf(address(this)) - oldBalance != totalAmount) {
             revert InvalidAmount();
         }
-
-        // store the amounts to be distributed
-        storeAmountsIntoBuckets(rewarded, reward, startEpoch, rewardAmounts);
 
         emit RewardRegistered(msgSender, rewarded, reward, startEpoch, rewardAmounts);
     }
@@ -296,9 +292,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         address reward,
         uint40 epoch
     ) public view virtual override returns (uint256) {
-        BucketStorage memory bucket = buckets[rewarded][reward][bucketStorageIndex(epoch)];
-
-        return epoch % 2 == 0 ? bucket.evenAmount : bucket.oddAmount;
+        return buckets[rewarded][reward][_bucketStorageIndex(epoch)][_bucketEpochIndex(epoch)];
     }
 
     /// @notice Returns the total supply of the rewarded token enabled and eligible to receive the reward token.
@@ -335,21 +329,21 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     /// @param timestamp The timestamp to get the epoch for.
     /// @return The epoch for the given timestamp.
     function getEpoch(uint40 timestamp) public view override returns (uint40) {
-        return timestamp / EPOCH_DURATION;
+        return uint40(timestamp / EPOCH_DURATION);
     }
 
     /// @notice Returns the start timestamp for a given epoch.
     /// @param epoch The epoch to get the start timestamp for.
     /// @return The start timestamp for the given epoch.
     function getEpochStartTimestamp(uint40 epoch) public view override returns (uint40) {
-        return epoch * EPOCH_DURATION;
+        return uint40(epoch * EPOCH_DURATION);
     }
 
     /// @notice Returns the end timestamp for a given epoch.
     /// @param epoch The epoch to get the end timestamp for.
     /// @return The end timestamp for the given epoch.
     function getEpochEndTimestamp(uint40 epoch) public view override returns (uint40) {
-        return getEpochStartTimestamp(epoch) + EPOCH_DURATION;
+        return uint40(getEpochStartTimestamp(epoch) + EPOCH_DURATION);
     }
 
     /// @notice Stores the reward token distribution amounts for a given rewarded token.
@@ -365,19 +359,20 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     ) internal virtual {
         uint256 length = amountsToBeStored.length;
         uint256 endEpoch = startEpoch + length - 1;
-        uint256 endIndex = bucketStorageIndex(uint40(endEpoch));
+        uint256 endIndex = _bucketStorageIndex(endEpoch);
 
         uint256 amountsIndex = 0;
-        for (uint40 i = bucketStorageIndex(startEpoch); i <= endIndex; ++i) {
-            BucketStorage memory bucket = buckets[rewarded][reward][i];
+        uint128[EPOCHS_PER_BUCKET] memory bucket;
+        for (uint256 i = _bucketStorageIndex(startEpoch); i <= endIndex; ++i) {
+            bucket = buckets[rewarded][reward][i];
 
-            // assign amounts to the appropriate fields based on the epoch
-            if (2 * i == startEpoch + amountsIndex && amountsIndex < length) {
-                bucket.evenAmount += amountsToBeStored[amountsIndex++];
+            // assign amounts to the appropriate indices based on the epoch
+            if (_bucketEpochIndex(startEpoch + amountsIndex) == 0 && amountsIndex < length) {
+                bucket[0] += amountsToBeStored[amountsIndex++];
             }
 
-            if (2 * i + 1 == startEpoch + amountsIndex && amountsIndex < length) {
-                bucket.oddAmount += amountsToBeStored[amountsIndex++];
+            if (_bucketEpochIndex(startEpoch + amountsIndex) == 1 && amountsIndex < length) {
+                bucket[1] += amountsToBeStored[amountsIndex++];
             }
 
             buckets[rewarded][reward][i] = bucket;
@@ -480,14 +475,18 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
             // Get the start and end epochs based on the last updated timestamp of the distribution.
             uint40 epochStart = getEpoch(newDistribution.lastUpdated);
             uint40 epochEnd = currentEpoch();
-            uint256 accumulatorDelta;
-            BucketStorage memory bucket;
+            uint256 accumulatorDelta = 0;
+            uint128[EPOCHS_PER_BUCKET] memory bucket;
 
             for (uint40 i = epochStart; i <= epochEnd; ++i) {
                 // Read the bucket storage slot only every other epoch or if it's the start epoch.
-                if (i % 2 == 0 || i == epochStart) {
-                    bucket = buckets[rewarded][reward][bucketStorageIndex(i)];
+                uint256 epochIndex = _bucketEpochIndex(i);
+                if (epochIndex == 0 || i == epochStart) {
+                    bucket = buckets[rewarded][reward][_bucketStorageIndex(i)];
                 }
+
+                // Retrieve the amount of rewards for the given epoch.
+                uint256 bucketAmount = bucket[epochIndex];
 
                 // Get the start and end timestamps for the given epoch.
                 uint256 startTimestamp = getEpochStartTimestamp(i);
@@ -508,9 +507,6 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
                         ? endTimestamp - newDistribution.lastUpdated
                         : EPOCH_DURATION;
                 }
-
-                // Retrieve the amount of rewards for the given epoch.
-                uint256 bucketAmount = i % 2 == 0 ? bucket.evenAmount : bucket.oddAmount;
 
                 // Calculate the delta of the accumulator. In case nobody earns rewards, the total is set to 1 to allow
                 // address(0) to arficially earn them. Otherwise, some portion of the rewards might get lost.
@@ -558,8 +554,15 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     /// @notice Returns the bucket storage index for a given epoch.
     /// @param epoch The epoch to get the bucket storage index for.
     /// @return The bucket storage index for the given epoch.
-    function bucketStorageIndex(uint40 epoch) internal pure returns (uint40) {
-        return epoch / 2;
+    function _bucketStorageIndex(uint256 epoch) internal pure returns (uint256) {
+        return epoch / EPOCHS_PER_BUCKET;
+    }
+
+    /// @notice Returns the bucket epoch index for a given epoch.
+    /// @param epoch The epoch to get the bucket epoch index for.
+    /// @return The bucket epoch index for the given epoch.
+    function _bucketEpochIndex(uint256 epoch) internal pure returns (uint256) {
+        return epoch % EPOCHS_PER_BUCKET;
     }
 
     /// @notice Retrieves the message sender in the context of the EVC.

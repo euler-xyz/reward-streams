@@ -10,12 +10,8 @@ contract BaseRewardStreamsHarness is BaseRewardStreams {
 
     constructor(IEVC evc, uint40 epochDuration) BaseRewardStreams(evc, epochDuration) {}
 
-    function getBucket(address rewarded, address reward, uint40 index) external view returns (BucketStorage memory) {
-        return buckets[rewarded][reward][index];
-    }
-
-    function setBucket(address rewarded, address reward, uint40 index, BucketStorage calldata bucket) external {
-        buckets[rewarded][reward][index] = bucket;
+    function setBucket(address rewarded, address reward, uint40 epoch, uint128 bucket) external {
+        buckets[rewarded][reward][_bucketStorageIndex(epoch)][_bucketEpochIndex(epoch)] = bucket;
     }
 
     function getDistribution(address rewarded, address reward) external view returns (DistributionStorage memory) {

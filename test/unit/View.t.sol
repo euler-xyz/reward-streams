@@ -43,43 +43,14 @@ contract ViewTest is Test {
         uint128 amount
     ) external {
         uint40 epoch = distributor.getEpoch(blockTimestamp);
-        bool isEven = epoch % 2 == 0;
-        BaseRewardStreams.BucketStorage memory bucket;
-
-        if (isEven) {
-            bucket.evenAmount = amount;
-        } else {
-            bucket.oddAmount = amount;
-        }
-
-        distributor.setBucket(rewarded, reward, epoch / 2, bucket);
-
+        distributor.setBucket(rewarded, reward, epoch, amount);
         vm.warp(blockTimestamp);
-
-        if (isEven) {
-            assertEq(distributor.rewardAmount(rewarded, reward), bucket.evenAmount);
-        } else {
-            assertEq(distributor.rewardAmount(rewarded, reward), bucket.oddAmount);
-        }
+        assertEq(distributor.rewardAmount(rewarded, reward), amount);
     }
 
     function test_RewardAmount(address rewarded, address reward, uint40 epoch, uint128 amount) external {
-        bool isEven = epoch % 2 == 0;
-        BaseRewardStreams.BucketStorage memory bucket;
-
-        if (isEven) {
-            bucket.evenAmount = amount;
-        } else {
-            bucket.oddAmount = amount;
-        }
-
-        distributor.setBucket(rewarded, reward, epoch / 2, bucket);
-
-        if (isEven) {
-            assertEq(distributor.rewardAmount(rewarded, reward, epoch), bucket.evenAmount);
-        } else {
-            assertEq(distributor.rewardAmount(rewarded, reward, epoch), bucket.oddAmount);
-        }
+        distributor.setBucket(rewarded, reward, epoch, amount);
+        assertEq(distributor.rewardAmount(rewarded, reward, epoch), amount);
     }
 
     function test_totalRewardedEligible(address rewarded, address reward, uint256 total) external {
