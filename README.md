@@ -117,10 +117,10 @@ Unlike other permissioned distributors based on the billion-dollar algorithm, Re
 ## Known limitations
 
 1. **Epoch duration may not be shorter than 7 days**: This limitation is in place to ensure the stability and efficiency of the distribution system. The longer the epoch, the more gas efficient the distribution is.
-2. **New distribution scheme may start at most 5 epochs ahead and be at most 25 epochs long**
+2. **New distribution scheme may start at most 5 epochs ahead and be at most 25 epochs long**: This limitation is in place not to register distribution too far in the future and lasting for too long.
 3. **A user may have at most 5 rewards enabled at a time for a given rewarded token**: This limitation is in place to prevent users from enabling an excessive number of rewards, which could lead to increased gas costs and potential system instability.
-4. **A distributor may distribute at most `type(uint160).max / 1e18` units of a reward token per rewarded token**
-5. **A user may have at most `type(uint96).max` units of a reward token unclaimed per rewarded token**
+4. **During its lifetime, a distributor may distribute at most `type(uint160).max / 1e18` units of a reward token per rewarded token**: This limitation is in place not to allow accumulator overflow.
+5. **A user may have at most `type(uint96).max` units of a reward token unclaimed per rewarded token**: If this amount is exceeded, excessive unclaimed rewards are virtually credited to address(0) and claimable by anyone.
 6. **If nobody earns rewards at the moment (i.e. nobody staked yet), they're being virtually accrued by address(0) and may be claimed by anyone**: This feature is designed to prevent reward tokens from being lost when nobody earns them at the moment. However, it also means that unclaimed rewards could potentially be claimed by anyone.
 7. **Distributor contracts do not have an owner or admin meaning that none of the assets can be directly recovered from them**: This feature is required for the system to work in a permissionless manner. However, it also means that if a mistake is made in the distribution of rewards, the assets cannot be directly recovered from the distributor contracts.
 
