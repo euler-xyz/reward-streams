@@ -249,7 +249,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         );
 
         if (account == address(0)) {
-            earnedCache.amount = addEarnedAmount(earnedCache.amount, deltaZeroEarnedAmount);
+            (earnedCache.amount,) = addDeltaToCurrents(earnedCache.amount, 0, deltaZeroEarnedAmount);
         }
 
         return earnedCache.amount;
@@ -429,8 +429,8 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
             getUpdateRewardTokenData(account, rewarded, reward, currentTotal, currentUserBalance, forfeitRecentReward);
 
         if (deltaZeroEarnedAmount > 0) {
-            earned[address(0)][rewarded][reward].amount =
-                addEarnedAmount(earned[address(0)][rewarded][reward].amount, deltaZeroEarnedAmount);
+            (earned[address(0)][rewarded][reward].amount,) =
+                addDeltaToCurrents(earned[address(0)][rewarded][reward].amount, 0, deltaZeroEarnedAmount);
         }
     }
 
@@ -505,47 +505,52 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
                         : EPOCH_DURATION;
                 }
 
-                // Calculate the delta of the accumulator. In case nobody earns rewards, the total is set to 1 to allow
-                // address(0) to arficially earn them. Otherwise, some portion of the rewards might get lost.
-                accumulatorDelta += (SCALER * timeElapsed * amount[epochIndex]) / EPOCH_DURATION
-                    / (currentTotal == 0 ? 1 : currentTotal);
+                accumulatorDelta += SCALER * timeElapsed * amount[epochIndex] / EPOCH_DURATION;
             }
 
             // In case nobody earns rewards, accrue them to address(0). Otherwise, some portion of the rewards might get
             // lost.
-            if (currentTotal == 0 && accumulatorDelta > 0) {
+            if (currentTotal == 0) {
                 deltaZeroEarnedAmount += accumulatorDelta / SCALER;
+            } else {
+                newDistribution.accumulator += uint160(accumulatorDelta / currentTotal);
             }
 
-            newDistribution.accumulator += uint160(accumulatorDelta);
             newDistribution.lastUpdated = uint40(block.timestamp);
         }
 
-        uint256 amountDelta = currentUserBalance * uint256(newDistribution.accumulator - newEarned.accumulator) / SCALER;
+        // In case there's an overflow, accrue the excess to address(0). Otherwise, some portion of the rewards might
+        // get lost.
+        (newEarned.amount, deltaZeroEarnedAmount) = addDeltaToCurrents(
+            newEarned.amount,
+            deltaZeroEarnedAmount,
+            currentUserBalance * uint256(newDistribution.accumulator - newEarned.accumulator) / SCALER
+        );
 
-        // if necessary, give the rest of earned rewards to address(0)
-        if (uint256(newEarned.amount) + amountDelta > type(uint96).max) {
-            deltaZeroEarnedAmount += amountDelta - type(uint96).max;
-        }
-
-        newEarned.amount = addEarnedAmount(newEarned.amount, amountDelta);
         newEarned.accumulator = newDistribution.accumulator;
     }
 
-    /// @notice Adds the given delta to the current earned amount.
-    /// @dev This function adds the given delta to the current earned amount and caps the result at the maximum value
-    /// for uint96.
-    /// @param current The current earned amount.
-    /// @param delta The amount to add to the current earned amount.
-    /// @return The updated earned amount.
-    function addEarnedAmount(uint256 current, uint256 delta) internal pure returns (uint96) {
-        current += delta;
+    /// @notice Adds the given delta to the first current amount up to uint96 max value. If it exceeds, it adds it to
+    /// the second current.
+    /// @param current1 The first current amount.
+    /// @param current2 The second current amount.
+    /// @param delta The amount to add to the current amounts.
+    /// @return total1 The total of the first current amount after adding the delta.
+    /// @return total2 The total of the second current amount after adding the remaining delta.
+    function addDeltaToCurrents(
+        uint256 current1,
+        uint256 current2,
+        uint256 delta
+    ) internal pure returns (uint96 total1, uint256 total2) {
+        current1 += delta;
 
-        if (current > type(uint96).max) {
-            current = type(uint96).max;
+        if (current1 > type(uint96).max) {
+            total1 = type(uint96).max;
+            total2 = current2 + (current1 - type(uint96).max);
+        } else {
+            total1 = uint96(current1);
+            total2 = uint96(current2);
         }
-
-        return uint96(current);
     }
 
     /// @notice Returns the storage index for a given epoch.

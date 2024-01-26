@@ -198,18 +198,20 @@ contract RegisterRewardTest is Test {
         assertEq(MockERC20(reward).balanceOf(address(distributor)), preBalance + totalAmount);
 
         // verify that the totals storage was properly updated (considering that some has time elapsed)
-        {
-            BaseRewardStreams.DistributionStorage memory distribution = distributor.getDistribution(rewarded, reward);
-            BaseRewardStreams.TotalsStorage memory totals = distributor.getTotals(rewarded, reward);
-            assertEq(distribution.lastUpdated, uint40(block.timestamp));
-            assertGt(distribution.accumulator, 0);
-            assertEq(totals.totalRegistered, uint128(preBalance) + totalAmount);
-            assertEq(totals.totalClaimed, 0);
-            assertEq(totals.totalEligible, 0);
-        }
-
-        // verify that the seeder earned storage was properly updated too
-        assertGt(distributor.getEarned(seeder, rewarded, reward).accumulator, 0);
+        assertEq(
+            abi.encode(distributor.getDistribution(rewarded, reward)),
+            abi.encode(BaseRewardStreams.DistributionStorage({lastUpdated: uint40(block.timestamp), accumulator: 0}))
+        );
+        assertEq(
+            abi.encode(distributor.getTotals(rewarded, reward)),
+            abi.encode(
+                BaseRewardStreams.TotalsStorage({
+                    totalRegistered: uint128(preBalance) + totalAmount,
+                    totalClaimed: 0,
+                    totalEligible: 0
+                })
+            )
+        );
 
         // verify that the distribution amounts storage was properly updated
         updateDistributionAmounts(rewarded, reward, startEpoch, amounts);
