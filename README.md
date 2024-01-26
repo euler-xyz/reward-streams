@@ -124,6 +124,15 @@ Unlike other permissioned distributors based on the billion-dollar algorithm, Re
 6. **If nobody earns rewards at the moment (i.e. nobody staked yet), they're being virtually accrued by address(0) and may be claimed by anyone**: This feature is designed to prevent reward tokens from being lost when nobody earns them at the moment. However, it also means that unclaimed rewards could potentially be claimed by anyone.
 7. **Distributor contracts do not have an owner or admin meaning that none of the assets can be directly recovered from them**: This feature is required for the system to work in a permissionless manner. However, it also means that if a mistake is made in the distribution of rewards, the assets cannot be directly recovered from the distributor contracts.
 
+## References
+
+1. [Liquidity Mining on Uniswap v3](https://www.paradigm.xyz/2021/05/liquidity-mining-on-uniswap-v3)
+2. [Scalable Reward Distribution on the Ethereum Blockchain](https://uploads-ssl.webflow.com/5ad71ffeb79acc67c8bcdaba/5ad8d1193a40977462982470_scalable-reward-distribution-paper.pdf)
+3. [Synthetix SIP-31: sETH LP rewards contract](https://sips.synthetix.io/sips/sip-31/)
+4. [Unipool by Anton Bukov](https://github.com/k06a/Unipool/commit/e4bdb0a978fd498a1480e3d1bc4b4c1682c74c12#diff-0d1e350796b5338e3c326be95f9a9ad147d4695746306a50a9fdccf8dbbfd708)
+5. [Analysis of the billion-dollar algorithm — SushiSwap’s MasterChef smart contract](https://medium.com/coinmonks/analysis-of-the-billion-dollar-algorithm-sushiswaps-masterchef-smart-contract-81bb4e479eb6)
+6. [1inch ERC20Plugins concept](https://github.com/1inch/token-plugins)
+7. [1inch farming plugin](https://github.com/1inch/farming?tab=readme-ov-file)
 
 ## Install
 
