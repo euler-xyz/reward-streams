@@ -40,20 +40,14 @@ contract MockERC20BalanceForwarder is MockERC20, IBalanceForwarder {
 
     function enableBalanceForwarding() external {
         address account = _msgSender();
-
-        if (!forwardingEnabled[account]) {
-            forwardingEnabled[account] = true;
-            balanceTracker.balanceTrackerHook(account, balanceOf(account), false);
-        }
+        forwardingEnabled[account] = true;
+        balanceTracker.balanceTrackerHook(account, balanceOf(account), false);
     }
 
     function disableBalanceForwarding() external {
         address account = _msgSender();
-
-        if (forwardingEnabled[account]) {
-            forwardingEnabled[account] = false;
-            balanceTracker.balanceTrackerHook(account, 0, false);
-        }
+        forwardingEnabled[account] = false;
+        balanceTracker.balanceTrackerHook(account, 0, false);
     }
 
     function _msgSender() internal view virtual override returns (address msgSender) {

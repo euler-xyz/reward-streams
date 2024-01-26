@@ -10,10 +10,10 @@ import "./IBalanceTracker.sol";
 interface IRewardStreams {
     function registerReward(address rewarded, address reward, uint40 startEpoch, uint128[] calldata rewardAmounts) external;
     function updateReward(address rewarded, address reward, address recipient) external;
-    function claimReward(address rewarded, address reward, address recipient, bool forgiveRecentReward) external;
+    function claimReward(address rewarded, address reward, address recipient, bool forfeitRecentReward) external;
     function enableReward(address rewarded, address reward) external;
-    function disableReward(address rewarded, address reward, bool forgiveRecentReward) external;
-    function earnedReward(address account, address rewarded, address reward, bool forgiveRecentReward) external view returns (uint256);
+    function disableReward(address rewarded, address reward, bool forfeitRecentReward) external;
+    function earnedReward(address account, address rewarded, address reward, bool forfeitRecentReward) external view returns (uint256);
     function enabledRewards(address account, address rewarded) external view returns (address[] memory);
     function balanceOf(address account, address rewarded) external view returns (uint256);
     function rewardAmount(address rewarded, address reward) external view returns (uint256);
@@ -37,5 +37,5 @@ interface IStakingFreeRewardStreams is IRewardStreams, IBalanceTracker {}
 /// @notice Interface for Staking Reward Streams, extends IRewardStreams with staking functionality
 interface IStakingRewardStreams is IRewardStreams {
     function stake(address rewarded, uint256 amount) external;
-    function unstake(address rewarded, uint256 amount, address recipient, bool forgiveRecentReward) external;
+    function unstake(address rewarded, uint256 amount, address recipient, bool forfeitRecentReward) external;
 }

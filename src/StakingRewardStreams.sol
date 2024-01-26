@@ -66,12 +66,12 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
     /// @param rewarded The address of the rewarded token.
     /// @param recipient The address to receive the unstaked tokens.
     /// @param amount The amount of tokens to unstake.
-    /// @param forgiveRecentReward Whether to forgive the recent reward and not update the accumulator.
+    /// @param forfeitRecentReward Whether to forfeit the recent reward and not update the accumulator.
     function unstake(
         address rewarded,
         uint256 amount,
         address recipient,
-        bool forgiveRecentReward
+        bool forfeitRecentReward
     ) external virtual override nonReentrant {
         address msgSender = _msgSender();
 
@@ -88,7 +88,7 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
             address reward = rewardsArray[i];
             uint256 currentTotal = totals[rewarded][reward].totalEligible;
 
-            updateRewardTokenData(msgSender, rewarded, reward, currentTotal, currentBalance, forgiveRecentReward);
+            updateRewardTokenData(msgSender, rewarded, reward, currentTotal, currentBalance, forfeitRecentReward);
 
             totals[rewarded][reward].totalEligible = currentTotal - amount;
         }

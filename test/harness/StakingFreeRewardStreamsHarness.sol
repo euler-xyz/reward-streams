@@ -10,8 +10,8 @@ contract StakingFreeRewardStreamsHarness is StakingFreeRewardStreams {
 
     constructor(IEVC evc, uint40 epochDuration) StakingFreeRewardStreams(evc, epochDuration) {}
 
-    function setBucket(address rewarded, address reward, uint40 epoch, uint128 bucket) external {
-        buckets[rewarded][reward][_bucketStorageIndex(epoch)][_bucketEpochIndex(epoch)] = bucket;
+    function setDistributionAmount(address rewarded, address reward, uint40 epoch, uint128 amount) external {
+        distributionAmounts[rewarded][reward][_storageIndex(epoch)][_epochIndex(epoch)] = amount;
     }
 
     function getDistribution(address rewarded, address reward) external view returns (DistributionStorage memory) {

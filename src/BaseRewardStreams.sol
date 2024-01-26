@@ -18,7 +18,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
 
     IEVC public immutable EVC;
     uint256 public immutable EPOCH_DURATION;
-    uint256 public constant EPOCHS_PER_BUCKET = 2;
+    uint256 public constant EPOCHS_PER_SLOT = 2;
     uint256 public constant MAX_EPOCHS_AHEAD = 5;
     uint256 public constant MAX_DISTRIBUTION_LENGTH = 25;
     uint256 public constant MAX_REWARDS_ENABLED = 5;
@@ -62,8 +62,8 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         uint160 accumulator;
     }
 
-    mapping(address rewarded => mapping(address reward => mapping(uint256 storageIndex => uint128[EPOCHS_PER_BUCKET])))
-        internal buckets;
+    mapping(address rewarded => mapping(address reward => mapping(uint256 storageIndex => uint128[EPOCHS_PER_SLOT])))
+        internal distributionAmounts;
     mapping(address rewarded => mapping(address reward => DistributionStorage)) internal distribution;
     mapping(address rewarded => mapping(address reward => TotalsStorage)) internal totals;
     mapping(address account => mapping(address rewarded => SetStorage)) internal rewards;
@@ -136,7 +136,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         }
 
         // store the amounts to be distributed
-        storeAmountsIntoBuckets(rewarded, reward, startEpoch, rewardAmounts);
+        storeAmounts(rewarded, reward, startEpoch, rewardAmounts);
 
         // transfer the total amount to be distributed to the contract
         address msgSender = _msgSender();
@@ -171,18 +171,18 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
     /// @param recipient The address to receive the claimed reward tokens.
-    /// @param forgiveRecentReward Whether to forgive the recent reward and not update the accumulator.
+    /// @param forfeitRecentReward Whether to forfeit the recent reward and not update the accumulator.
     function claimReward(
         address rewarded,
         address reward,
         address recipient,
-        bool forgiveRecentReward
+        bool forfeitRecentReward
     ) external virtual override nonReentrant {
         address msgSender = _msgSender();
         uint256 currentBalance = rewards[msgSender][rewarded].contains(reward) ? balances[msgSender][rewarded] : 0;
 
         updateRewardTokenData(
-            msgSender, rewarded, reward, totals[rewarded][reward].totalEligible, currentBalance, forgiveRecentReward
+            msgSender, rewarded, reward, totals[rewarded][reward].totalEligible, currentBalance, forfeitRecentReward
         );
 
         claim(msgSender, rewarded, reward, recipient);
@@ -214,15 +214,15 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     /// @notice Disable reward token.
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
-    /// @param forgiveRecentReward Whether to forgive the recent reward and not update the accumulator.
-    function disableReward(address rewarded, address reward, bool forgiveRecentReward) external virtual override {
+    /// @param forfeitRecentReward Whether to forfeit the recent reward and not update the accumulator.
+    function disableReward(address rewarded, address reward, bool forfeitRecentReward) external virtual override {
         address msgSender = _msgSender();
 
         if (rewards[msgSender][rewarded].remove(reward)) {
             uint256 currentBalance = balances[msgSender][rewarded];
             uint256 currentTotal = totals[rewarded][reward].totalEligible;
 
-            updateRewardTokenData(msgSender, rewarded, reward, currentTotal, currentBalance, forgiveRecentReward);
+            updateRewardTokenData(msgSender, rewarded, reward, currentTotal, currentBalance, forfeitRecentReward);
 
             totals[rewarded][reward].totalEligible = currentTotal - currentBalance;
 
@@ -234,18 +234,18 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     /// @param account The address of the account.
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
-    /// @param forgiveRecentReward Whether to forgive the recent reward and not update the accumulator.
+    /// @param forfeitRecentReward Whether to forfeit the recent reward and not update the accumulator.
     /// @return The earned reward token amount for the account and rewarded token.
     function earnedReward(
         address account,
         address rewarded,
         address reward,
-        bool forgiveRecentReward
+        bool forfeitRecentReward
     ) external view virtual override returns (uint256) {
         uint256 currentBalance = rewards[account][rewarded].contains(reward) ? balances[account][rewarded] : 0;
 
         (, EarnStorage memory earnedCache, uint256 deltaZeroEarnedAmount) = getUpdateRewardTokenData(
-            account, rewarded, reward, totals[rewarded][reward].totalEligible, currentBalance, forgiveRecentReward
+            account, rewarded, reward, totals[rewarded][reward].totalEligible, currentBalance, forfeitRecentReward
         );
 
         if (account == address(0)) {
@@ -292,7 +292,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         address reward,
         uint40 epoch
     ) public view virtual override returns (uint256) {
-        return buckets[rewarded][reward][_bucketStorageIndex(epoch)][_bucketEpochIndex(epoch)];
+        return distributionAmounts[rewarded][reward][_storageIndex(epoch)][_epochIndex(epoch)];
     }
 
     /// @notice Returns the total supply of the rewarded token enabled and eligible to receive the reward token.
@@ -351,7 +351,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     /// @param reward The address of the reward token.
     /// @param startEpoch The starting epoch for the distribution.
     /// @param amountsToBeStored The reward token amounts to be stored for each epoch.
-    function storeAmountsIntoBuckets(
+    function storeAmounts(
         address rewarded,
         address reward,
         uint40 startEpoch,
@@ -359,23 +359,23 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     ) internal virtual {
         uint256 length = amountsToBeStored.length;
         uint256 endEpoch = startEpoch + length - 1;
-        uint256 endIndex = _bucketStorageIndex(endEpoch);
+        uint256 endIndex = _storageIndex(endEpoch);
 
         uint256 amountsIndex = 0;
-        uint128[EPOCHS_PER_BUCKET] memory bucket;
-        for (uint256 i = _bucketStorageIndex(startEpoch); i <= endIndex; ++i) {
-            bucket = buckets[rewarded][reward][i];
+        uint128[EPOCHS_PER_SLOT] memory amount;
+        for (uint256 i = _storageIndex(startEpoch); i <= endIndex; ++i) {
+            amount = distributionAmounts[rewarded][reward][i];
 
             // assign amounts to the appropriate indices based on the epoch
-            if (_bucketEpochIndex(startEpoch + amountsIndex) == 0 && amountsIndex < length) {
-                bucket[0] += amountsToBeStored[amountsIndex++];
+            if (_epochIndex(startEpoch + amountsIndex) == 0 && amountsIndex < length) {
+                amount[0] += amountsToBeStored[amountsIndex++];
             }
 
-            if (_bucketEpochIndex(startEpoch + amountsIndex) == 1 && amountsIndex < length) {
-                bucket[1] += amountsToBeStored[amountsIndex++];
+            if (_epochIndex(startEpoch + amountsIndex) == 1 && amountsIndex < length) {
+                amount[1] += amountsToBeStored[amountsIndex++];
             }
 
-            buckets[rewarded][reward][i] = bucket;
+            distributionAmounts[rewarded][reward][i] = amount;
         }
     }
 
@@ -414,19 +414,19 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     /// @param reward The address of the reward token.
     /// @param currentTotal The current total amount of rewarded token enabled to get the reward token.
     /// @param currentUserBalance The current rewarded token balance of the account.
-    /// @param forgiveRecentReward Whether to forgive the recent reward and not update the accumulator.
+    /// @param forfeitRecentReward Whether to forfeit the recent reward and not update the accumulator.
     function updateRewardTokenData(
         address account,
         address rewarded,
         address reward,
         uint256 currentTotal,
         uint256 currentUserBalance,
-        bool forgiveRecentReward
+        bool forfeitRecentReward
     ) internal virtual {
         uint256 deltaZeroEarnedAmount;
 
         (distribution[rewarded][reward], earned[account][rewarded][reward], deltaZeroEarnedAmount) =
-            getUpdateRewardTokenData(account, rewarded, reward, currentTotal, currentUserBalance, forgiveRecentReward);
+            getUpdateRewardTokenData(account, rewarded, reward, currentTotal, currentUserBalance, forfeitRecentReward);
 
         if (deltaZeroEarnedAmount > 0) {
             earned[address(0)][rewarded][reward].amount =
@@ -442,7 +442,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     /// @param reward The address of the reward token.
     /// @param currentTotal The current total amount of rewarded token enabled to get the reward token.
     /// @param currentUserBalance The current rewarded token balance of the account.
-    /// @param forgiveRecentReward Whether to forgive the recent reward and not update the accumulator.
+    /// @param forfeitRecentReward Whether to forfeit the recent reward and not update the accumulator.
     /// @return newDistribution The updated distribution storage for the rewarded token and reward token.
     /// @return newEarned The updated earned storage for the account, rewarded token, and reward token.
     /// @return deltaZeroEarnedAmount The amount of rewards earned by address(0) since the last update.
@@ -452,7 +452,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         address reward,
         uint256 currentTotal,
         uint256 currentUserBalance,
-        bool forgiveRecentReward
+        bool forfeitRecentReward
     )
         internal
         view
@@ -471,22 +471,19 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
             return (newDistribution, newEarned, deltaZeroEarnedAmount);
         }
 
-        if (!forgiveRecentReward) {
+        if (!forfeitRecentReward) {
             // Get the start and end epochs based on the last updated timestamp of the distribution.
             uint40 epochStart = getEpoch(newDistribution.lastUpdated);
             uint40 epochEnd = currentEpoch();
             uint256 accumulatorDelta = 0;
-            uint128[EPOCHS_PER_BUCKET] memory bucket;
+            uint128[EPOCHS_PER_SLOT] memory amount;
 
             for (uint40 i = epochStart; i <= epochEnd; ++i) {
-                // Read the bucket storage slot only every other epoch or if it's the start epoch.
-                uint256 epochIndex = _bucketEpochIndex(i);
+                // Read the storage slot only every other epoch or if it's the start epoch.
+                uint256 epochIndex = _epochIndex(i);
                 if (epochIndex == 0 || i == epochStart) {
-                    bucket = buckets[rewarded][reward][_bucketStorageIndex(i)];
+                    amount = distributionAmounts[rewarded][reward][_storageIndex(i)];
                 }
-
-                // Retrieve the amount of rewards for the given epoch.
-                uint256 bucketAmount = bucket[epochIndex];
 
                 // Get the start and end timestamps for the given epoch.
                 uint256 startTimestamp = getEpochStartTimestamp(i);
@@ -510,8 +507,8 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
 
                 // Calculate the delta of the accumulator. In case nobody earns rewards, the total is set to 1 to allow
                 // address(0) to arficially earn them. Otherwise, some portion of the rewards might get lost.
-                accumulatorDelta +=
-                    (SCALER * timeElapsed * bucketAmount) / EPOCH_DURATION / (currentTotal == 0 ? 1 : currentTotal);
+                accumulatorDelta += (SCALER * timeElapsed * amount[epochIndex]) / EPOCH_DURATION
+                    / (currentTotal == 0 ? 1 : currentTotal);
             }
 
             // In case nobody earns rewards, accrue them to address(0). Otherwise, some portion of the rewards might get
@@ -551,18 +548,18 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         return uint96(current);
     }
 
-    /// @notice Returns the bucket storage index for a given epoch.
-    /// @param epoch The epoch to get the bucket storage index for.
-    /// @return The bucket storage index for the given epoch.
-    function _bucketStorageIndex(uint256 epoch) internal pure returns (uint256) {
-        return epoch / EPOCHS_PER_BUCKET;
+    /// @notice Returns the storage index for a given epoch.
+    /// @param epoch The epoch to get the storage index for.
+    /// @return The storage index for the given epoch.
+    function _storageIndex(uint256 epoch) internal pure returns (uint256) {
+        return epoch / EPOCHS_PER_SLOT;
     }
 
-    /// @notice Returns the bucket epoch index for a given epoch.
-    /// @param epoch The epoch to get the bucket epoch index for.
-    /// @return The bucket epoch index for the given epoch.
-    function _bucketEpochIndex(uint256 epoch) internal pure returns (uint256) {
-        return epoch % EPOCHS_PER_BUCKET;
+    /// @notice Returns the epoch index for a given epoch.
+    /// @param epoch The epoch to get the epoch index for.
+    /// @return The epoch index for the given epoch.
+    function _epochIndex(uint256 epoch) internal pure returns (uint256) {
+        return epoch % EPOCHS_PER_SLOT;
     }
 
     /// @notice Retrieves the message sender in the context of the EVC.

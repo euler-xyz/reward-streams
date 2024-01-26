@@ -1537,7 +1537,7 @@ contract ScenarioTest is Test {
             stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward2, false), 2e18, ALLOWED_DELTA
         );
 
-        // participant 1: disables both rewards and forgives the most recent rewards (they should accrue to address(0)
+        // participant 1: disables both rewards and forfeits the most recent rewards (they should accrue to address(0)
         // because participant2 has no eligible balance)
         // participant 2: increases eligible balance (it doesn't matter though because all the rewards are still earned
         // by address(0) - participant2 has had no eligible balance)
@@ -1868,7 +1868,7 @@ contract ScenarioTest is Test {
         // forward the time
         vm.warp(block.timestamp + 5 days);
 
-        // participant 3: disables and forgives the reward
+        // participant 3: disables and forfeits the reward
         vm.startPrank(participant3);
         stakingDistributor.unstake(stakingRewarded, 5e18, participant3, true);
         stakingFreeDistributor.disableReward(stakingFreeRewarded, reward, true);

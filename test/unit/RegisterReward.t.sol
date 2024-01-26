@@ -10,7 +10,8 @@ import "../utils/MockERC20.sol";
 contract RegisterRewardTest is Test {
     EthereumVaultConnector internal evc;
     BaseRewardStreamsHarness internal distributor;
-    mapping(address rewarded => mapping(address reward => mapping(uint256 epoch => uint256 amount))) internal buckets;
+    mapping(address rewarded => mapping(address reward => mapping(uint256 epoch => uint256 amount))) internal
+        distributionAmounts;
     address internal rewarded;
     address internal reward;
     address internal seeder;
@@ -35,14 +36,14 @@ contract RegisterRewardTest is Test {
         MockERC20(reward).approve(address(distributor), type(uint256).max);
     }
 
-    function updateBuckets(
+    function updateDistributionAmounts(
         address _rewarded,
         address _reward,
         uint40 _startEpoch,
         uint128[] memory _amounts
     ) internal {
         for (uint256 i; i < _amounts.length; ++i) {
-            buckets[_rewarded][_reward][_startEpoch + i] += _amounts[i];
+            distributionAmounts[_rewarded][_reward][_startEpoch + i] += _amounts[i];
         }
     }
 
@@ -110,12 +111,13 @@ contract RegisterRewardTest is Test {
             )
         );
 
-        // verify that the buckets storage was properly updated
-        updateBuckets(rewarded, reward, startEpoch, amounts);
+        // verify that the distribution amounts storage was properly updated
+        updateDistributionAmounts(rewarded, reward, startEpoch, amounts);
 
         for (uint40 i; i <= distributor.MAX_EPOCHS_AHEAD(); ++i) {
             assertEq(
-                distributor.rewardAmount(rewarded, reward, startEpoch + i), buckets[rewarded][reward][startEpoch + i]
+                distributor.rewardAmount(rewarded, reward, startEpoch + i),
+                distributionAmounts[rewarded][reward][startEpoch + i]
             );
         }
 
@@ -156,13 +158,14 @@ contract RegisterRewardTest is Test {
             )
         );
 
-        // verify that the buckets storage was properly updated
+        // verify that the distribution amounts storage was properly updated
         startEpoch = distributor.currentEpoch() + 1;
-        updateBuckets(rewarded, reward, startEpoch, amounts);
+        updateDistributionAmounts(rewarded, reward, startEpoch, amounts);
 
         for (uint40 i; i <= distributor.MAX_EPOCHS_AHEAD(); ++i) {
             assertEq(
-                distributor.rewardAmount(rewarded, reward, startEpoch + i), buckets[rewarded][reward][startEpoch + i]
+                distributor.rewardAmount(rewarded, reward, startEpoch + i),
+                distributionAmounts[rewarded][reward][startEpoch + i]
             );
         }
 
@@ -208,12 +211,13 @@ contract RegisterRewardTest is Test {
         // verify that the seeder earned storage was properly updated too
         assertGt(distributor.getEarned(seeder, rewarded, reward).accumulator, 0);
 
-        // verify that the buckets storage was properly updated
-        updateBuckets(rewarded, reward, startEpoch, amounts);
+        // verify that the distribution amounts storage was properly updated
+        updateDistributionAmounts(rewarded, reward, startEpoch, amounts);
 
         for (uint40 i; i <= distributor.MAX_EPOCHS_AHEAD(); ++i) {
             assertEq(
-                distributor.rewardAmount(rewarded, reward, startEpoch + i), buckets[rewarded][reward][startEpoch + i]
+                distributor.rewardAmount(rewarded, reward, startEpoch + i),
+                distributionAmounts[rewarded][reward][startEpoch + i]
             );
         }
     }

@@ -26,8 +26,8 @@ contract StakingFreeRewardStreams is BaseRewardStreams, IStakingFreeRewardStream
     /// @notice Executes the balance tracking hook for an account
     /// @param account The account address to execute the hook for
     /// @param newBalance The new balance of the account
-    /// @param forgiveRecentReward Whether to forgive the most recent reward and not update the accumulator
-    function balanceTrackerHook(address account, uint256 newBalance, bool forgiveRecentReward) external override {
+    /// @param forfeitRecentReward Whether to forfeit the most recent reward and not update the accumulator
+    function balanceTrackerHook(address account, uint256 newBalance, bool forfeitRecentReward) external override {
         address rewarded = msg.sender;
         uint256 currentBalance = balances[account][rewarded];
         address[] memory rewardsArray = rewards[account][rewarded].get();
@@ -36,7 +36,7 @@ contract StakingFreeRewardStreams is BaseRewardStreams, IStakingFreeRewardStream
             address reward = rewardsArray[i];
             uint256 currentTotal = totals[rewarded][reward].totalEligible;
 
-            updateRewardTokenData(account, rewarded, reward, currentTotal, currentBalance, forgiveRecentReward);
+            updateRewardTokenData(account, rewarded, reward, currentTotal, currentBalance, forfeitRecentReward);
 
             totals[rewarded][reward].totalEligible = currentTotal + newBalance - currentBalance;
         }

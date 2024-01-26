@@ -43,13 +43,13 @@ contract ViewTest is Test {
         uint128 amount
     ) external {
         uint40 epoch = distributor.getEpoch(blockTimestamp);
-        distributor.setBucket(rewarded, reward, epoch, amount);
+        distributor.setDistributionAmount(rewarded, reward, epoch, amount);
         vm.warp(blockTimestamp);
         assertEq(distributor.rewardAmount(rewarded, reward), amount);
     }
 
     function test_RewardAmount(address rewarded, address reward, uint40 epoch, uint128 amount) external {
-        distributor.setBucket(rewarded, reward, epoch, amount);
+        distributor.setDistributionAmount(rewarded, reward, epoch, amount);
         assertEq(distributor.rewardAmount(rewarded, reward, epoch), amount);
     }
 
