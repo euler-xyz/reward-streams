@@ -133,7 +133,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         uint256 totalRegistered = uint256(distributionTotals[rewarded][reward].totalRegistered) + totalAmount;
         distributionTotals[rewarded][reward].totalRegistered = uint128(totalRegistered);
 
-        // sanity check for overflow (assumes supply of 1 which is the worst case scenario)
+        // sanity check for overflow (assumes total eligible supply of 1 which is the worst case scenario)
         if (SCALER * totalRegistered > type(uint160).max) {
             revert AccumulatorOverflow();
         }
@@ -143,12 +143,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
 
         // transfer the total amount to be distributed to the contract
         address msgSender = _msgSender();
-        uint256 oldBalance = IERC20(reward).balanceOf(address(this));
-        IERC20(reward).safeTransferFrom(msgSender, address(this), totalAmount);
-
-        if (IERC20(reward).balanceOf(address(this)) - oldBalance != totalAmount) {
-            revert InvalidAmount();
-        }
+        pullToken(IERC20(reward), msgSender, totalAmount);
 
         emit RewardRegistered(msgSender, rewarded, reward, startEpoch, rewardAmounts);
     }
@@ -163,7 +158,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         uint256 currentAccountBalance =
             accountEnabledRewards[msgSender][rewarded].contains(reward) ? accountBalances[msgSender][rewarded] : 0;
 
-        updateRewardTokenData(
+        updateData(
             msgSender,
             rewarded,
             reward,
@@ -180,7 +175,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
     /// @param recipient The address to receive the claimed reward tokens.
-    /// @param forfeitRecentReward Whether to forfeit the recent reward and not update the accumulator.
+    /// @param forfeitRecentReward Whether to forfeit the recent rewards and not update the accumulator.
     function claimReward(
         address rewarded,
         address reward,
@@ -191,7 +186,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         uint256 currentAccountBalance =
             accountEnabledRewards[msgSender][rewarded].contains(reward) ? accountBalances[msgSender][rewarded] : 0;
 
-        updateRewardTokenData(
+        updateData(
             msgSender,
             rewarded,
             reward,
@@ -218,7 +213,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
             uint256 currentAccountBalance = accountBalances[msgSender][rewarded];
             uint256 currentTotalEligible = distributionTotals[rewarded][reward].totalEligible;
 
-            updateRewardTokenData(msgSender, rewarded, reward, currentTotalEligible, 0, false);
+            updateData(msgSender, rewarded, reward, currentTotalEligible, 0, false);
 
             distributionTotals[rewarded][reward].totalEligible = currentTotalEligible + currentAccountBalance;
 
@@ -229,7 +224,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     /// @notice Disable reward token.
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
-    /// @param forfeitRecentReward Whether to forfeit the recent reward and not update the accumulator.
+    /// @param forfeitRecentReward Whether to forfeit the recent rewards and not update the accumulator.
     function disableReward(address rewarded, address reward, bool forfeitRecentReward) external virtual override {
         address msgSender = _msgSender();
 
@@ -237,9 +232,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
             uint256 currentAccountBalance = accountBalances[msgSender][rewarded];
             uint256 currentTotalEligible = distributionTotals[rewarded][reward].totalEligible;
 
-            updateRewardTokenData(
-                msgSender, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward
-            );
+            updateData(msgSender, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward);
 
             distributionTotals[rewarded][reward].totalEligible = currentTotalEligible - currentAccountBalance;
 
@@ -251,7 +244,7 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     /// @param account The address of the account.
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
-    /// @param forfeitRecentReward Whether to forfeit the recent reward and not update the accumulator.
+    /// @param forfeitRecentReward Whether to forfeit the recent rewards and not update the accumulator.
     /// @return The earned reward token amount for the account and rewarded token.
     function earnedReward(
         address account,
@@ -261,9 +254,11 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     ) external view virtual override returns (uint256) {
         uint256 currentAccountBalance =
             accountEnabledRewards[account][rewarded].contains(reward) ? accountBalances[account][rewarded] : 0;
+        EarnStorage memory accountEarned = accountEarnedData[account][rewarded][reward];
 
-        (, EarnStorage memory accountEarnedDataCache, uint256 deltaZeroEarnedAmount) = getUpdateRewardTokenData(
-            account,
+        uint256 deltaAccountZero = getUpdatedData(
+            distributionData[rewarded][reward],
+            accountEarned,
             rewarded,
             reward,
             distributionTotals[rewarded][reward].totalEligible,
@@ -271,12 +266,11 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
             forfeitRecentReward
         );
 
-        if (account == address(0)) {
-            (accountEarnedDataCache.amount,) =
-                _addDeltaToCurrents(accountEarnedDataCache.amount, 0, deltaZeroEarnedAmount);
+        if (account == address(0) && deltaAccountZero > 0) {
+            (accountEarned.amount,) = _addDeltaToCurrents(accountEarned.amount, 0, deltaAccountZero);
         }
 
-        return accountEarnedDataCache.amount;
+        return accountEarned.amount;
     }
 
     /// @notice Returns enabled reward tokens for a specific account.
@@ -382,24 +376,20 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         uint128[] memory amountsToBeStored
     ) internal virtual {
         uint256 length = amountsToBeStored.length;
-        uint256 endEpoch = startEpoch + length - 1;
-        uint256 endIndex = _storageIndex(endEpoch);
+        uint256 startStorageIndex = _storageIndex(startEpoch);
+        uint256 endStorageIndex = _storageIndex(startEpoch + length - 1);
 
-        uint256 amountsIndex = 0;
-        uint128[EPOCHS_PER_SLOT] memory amount;
-        for (uint256 i = _storageIndex(startEpoch); i <= endIndex; ++i) {
-            amount = distributionAmounts[rewarded][reward][i];
+        uint256 memoryIndex = 0;
+        uint128[EPOCHS_PER_SLOT] memory amounts;
+        for (uint256 i = startStorageIndex; i <= endStorageIndex; ++i) {
+            amounts = distributionAmounts[rewarded][reward][i];
 
             // assign amounts to the appropriate indices based on the epoch
-            if (_epochIndex(startEpoch + amountsIndex) == 0 && amountsIndex < length) {
-                amount[0] += amountsToBeStored[amountsIndex++];
+            for (uint256 j = _epochIndex(startEpoch + memoryIndex); j < EPOCHS_PER_SLOT && memoryIndex < length; ++j) {
+                amounts[j] += amountsToBeStored[memoryIndex++];
             }
 
-            if (_epochIndex(startEpoch + amountsIndex) == 1 && amountsIndex < length) {
-                amount[1] += amountsToBeStored[amountsIndex++];
-            }
-
-            distributionAmounts[rewarded][reward][i] = amount;
+            distributionAmounts[rewarded][reward][i] = amounts;
         }
     }
 
@@ -433,13 +423,15 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     }
 
     /// @notice Updates the data for a specific account, rewarded token and reward token.
+    /// @dev If required, this function artificially accumulates rewards for the address(0) to avoid loss of rewards
+    /// that wouldn't be claimable by anyone else.
     /// @param account The address of the account.
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
     /// @param currentTotalEligible The current total amount of rewarded token eligible to get the reward token.
     /// @param currentAccountBalance The current rewarded token balance of the account.
-    /// @param forfeitRecentReward Whether to forfeit the recent reward and not update the accumulator.
-    function updateRewardTokenData(
+    /// @param forfeitRecentReward Whether to forfeit the recent rewards and not update the accumulator.
+    function updateData(
         address account,
         address rewarded,
         address reward,
@@ -447,113 +439,108 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         uint256 currentAccountBalance,
         bool forfeitRecentReward
     ) internal virtual {
-        uint256 deltaZeroEarnedAmount;
+        DistributionStorage memory distribution = distributionData[rewarded][reward];
+        EarnStorage memory accountEarned = accountEarnedData[account][rewarded][reward];
 
-        (distributionData[rewarded][reward], accountEarnedData[account][rewarded][reward], deltaZeroEarnedAmount) =
-        getUpdateRewardTokenData(
-            account, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward
+        uint256 deltaAccountZero = getUpdatedData(
+            distribution,
+            accountEarned,
+            rewarded,
+            reward,
+            currentTotalEligible,
+            currentAccountBalance,
+            forfeitRecentReward
         );
 
-        if (deltaZeroEarnedAmount > 0) {
+        distributionData[rewarded][reward] = distribution;
+        accountEarnedData[account][rewarded][reward] = accountEarned;
+
+        if (deltaAccountZero > 0) {
             (accountEarnedData[address(0)][rewarded][reward].amount,) =
-                _addDeltaToCurrents(accountEarnedData[address(0)][rewarded][reward].amount, 0, deltaZeroEarnedAmount);
+                _addDeltaToCurrents(accountEarnedData[address(0)][rewarded][reward].amount, 0, deltaAccountZero);
         }
     }
 
-    /// @notice Calculates updated data for a specific account, rewarded token and reward token.
-    /// @dev If necessary, this function artificially earns rewards for the address(0). It is done in order for the
-    /// rewards not to get lost in case nobody else earns them.
-    /// @param account The address of the account.
+    /// @notice Computes updated data for a specific account, rewarded token, and reward token.
+    /// @param distribution The distribution storage memory, which is modified by this function.
+    /// @param accountEarned The account earned storage memory, which is modified by this function.
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
     /// @param currentTotalEligible The current total amount of rewarded token eligible to get the reward token.
     /// @param currentAccountBalance The current rewarded token balance of the account.
-    /// @param forfeitRecentReward Whether to forfeit the recent reward and not update the accumulator.
-    /// @return newDistributionData The updated distribution storage for the rewarded token and reward token.
-    /// @return newAccountEarnedData The updated earned storage for the account, rewarded token, and reward token.
-    /// @return deltaZeroEarnedAmount The amount of rewards earned by address(0) since the last update.
-    function getUpdateRewardTokenData(
-        address account,
+    /// @param forfeitRecentReward Whether to forfeit the recent rewards and not update the accumulator.
+    /// @return deltaAccountZero Amount to be credited to address(0) in case rewards were to be lost.
+    function getUpdatedData(
+        DistributionStorage memory distribution,
+        EarnStorage memory accountEarned,
         address rewarded,
         address reward,
         uint256 currentTotalEligible,
         uint256 currentAccountBalance,
         bool forfeitRecentReward
-    )
-        internal
-        view
-        virtual
-        returns (
-            DistributionStorage memory newDistributionData,
-            EarnStorage memory newAccountEarnedData,
-            uint256 deltaZeroEarnedAmount
-        )
-    {
-        newDistributionData = distributionData[rewarded][reward];
-        newAccountEarnedData = accountEarnedData[account][rewarded][reward];
-
+    ) internal view virtual returns (uint256 deltaAccountZero) {
         // If the distribution is not initialized, return.
-        if (newDistributionData.lastUpdated == 0) {
-            return (newDistributionData, newAccountEarnedData, deltaZeroEarnedAmount);
+        if (distribution.lastUpdated == 0) {
+            return 0;
         }
 
         if (!forfeitRecentReward) {
             // Get the start and end epochs based on the last updated timestamp of the distribution.
-            uint40 epochStart = getEpoch(newDistributionData.lastUpdated);
+            uint40 lastUpdated = distribution.lastUpdated;
+            uint40 epochStart = getEpoch(lastUpdated);
             uint40 epochEnd = currentEpoch();
-            uint256 accumulatorDelta = 0;
-            uint128[EPOCHS_PER_SLOT] memory amount;
+            uint128[EPOCHS_PER_SLOT] memory amounts;
+            uint256 delta = 0;
 
+            // Calculate the amount of tokens since last update that should be distributed.
             for (uint40 i = epochStart; i <= epochEnd; ++i) {
                 // Read the storage slot only every other epoch or if it's the start epoch.
                 uint256 epochIndex = _epochIndex(i);
                 if (epochIndex == 0 || i == epochStart) {
-                    amount = distributionAmounts[rewarded][reward][_storageIndex(i)];
+                    amounts = distributionAmounts[rewarded][reward][_storageIndex(i)];
                 }
 
-                // Get the start and end timestamps for the given epoch.
-                uint256 startTimestamp = getEpochStartTimestamp(i);
-                uint256 endTimestamp = getEpochEndTimestamp(i);
-
-                // Calculate the time elapsed in the given epoch.
-                uint256 timeElapsed;
-                if (block.timestamp >= startTimestamp && block.timestamp < endTimestamp) {
-                    // If the epoch is still ongoing, calculate the time elapsed since the last update or the start
-                    // of the epoch.
-                    timeElapsed = newDistributionData.lastUpdated > startTimestamp
-                        ? block.timestamp - newDistributionData.lastUpdated
-                        : block.timestamp - startTimestamp;
-                } else {
-                    // If the epoch has ended, calculate the time elapsed since the last update or the entire
-                    // duration of the epoch.
-                    timeElapsed = newDistributionData.lastUpdated > startTimestamp
-                        ? endTimestamp - newDistributionData.lastUpdated
-                        : EPOCH_DURATION;
-                }
-
-                accumulatorDelta += SCALER * timeElapsed * amount[epochIndex] / EPOCH_DURATION;
+                delta += SCALER * _timeElapsedInEpoch(i, lastUpdated) * amounts[epochIndex] / EPOCH_DURATION;
             }
 
-            // In case nobody earns rewards, accrue them to address(0). Otherwise, some portion of the rewards might get
-            // lost.
+            // Increase the accumulator scaled by the total eligible amount earning reward. In case nobody earns
+            // rewards, accrue them to address(0). Otherwise, some portion of the rewards might get lost.
             if (currentTotalEligible == 0) {
-                deltaZeroEarnedAmount += accumulatorDelta / SCALER;
+                deltaAccountZero += delta / SCALER;
             } else {
-                newDistributionData.accumulator += uint160(accumulatorDelta / currentTotalEligible);
+                distribution.accumulator += uint160(delta / currentTotalEligible);
             }
 
-            newDistributionData.lastUpdated = uint40(block.timestamp);
+            // Snapshot the timestamp.
+            distribution.lastUpdated = uint40(block.timestamp);
         }
 
-        // In case there's an overflow, accrue the excess to address(0). Otherwise, some portion of the rewards might
-        // get lost.
-        (newAccountEarnedData.amount, deltaZeroEarnedAmount) = _addDeltaToCurrents(
-            newAccountEarnedData.amount,
-            deltaZeroEarnedAmount,
-            uint256(newDistributionData.accumulator - newAccountEarnedData.accumulator) * currentAccountBalance / SCALER
+        // Update account's earned amount. In case there's an overflow, accrue the excess to address(0). Otherwise, some
+        // portion of the rewards might get lost.
+        (accountEarned.amount, deltaAccountZero) = _addDeltaToCurrents(
+            accountEarned.amount,
+            deltaAccountZero,
+            uint256(distribution.accumulator - accountEarned.accumulator) * currentAccountBalance / SCALER
         );
 
-        newAccountEarnedData.accumulator = newDistributionData.accumulator;
+        // Snapshot new accumulator value.
+        accountEarned.accumulator = distribution.accumulator;
+    }
+
+    /// @notice Transfers a specified amount of a token from a given address to this contract.
+    /// @dev This function uses the ERC20 safeTransferFrom function to move tokens.
+    /// It checks the balance before and after the transfer to ensure the correct amount has been transferred.
+    /// If the transferred amount does not match the expected amount, it reverts the transaction.
+    /// @param token The ERC20 token to transfer.
+    /// @param from The address to transfer the tokens from.
+    /// @param amount The amount of tokens to transfer.
+    function pullToken(IERC20 token, address from, uint256 amount) internal {
+        uint256 preBalance = token.balanceOf(address(this));
+        token.safeTransferFrom(from, address(this), amount);
+
+        if (token.balanceOf(address(this)) - preBalance != amount) {
+            revert InvalidAmount();
+        }
     }
 
     /// @notice Returns the storage index for a given epoch.
@@ -568,6 +555,31 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
     /// @return The epoch index for the given epoch.
     function _epochIndex(uint256 epoch) internal pure returns (uint256) {
         return epoch % EPOCHS_PER_SLOT;
+    }
+
+    /// @notice Calculates the time elapsed within a given epoch.
+    /// @dev This function compares the current block timestamp with the start and end timestamps of the epoch.
+    /// If the epoch is ongoing, it calculates the time elapsed since the last update or the start of the epoch.
+    /// If the epoch has ended, it calculates the time elapsed since the last update or the entire duration of the
+    /// epoch.
+    /// @param epoch The epoch for which to calculate the time elapsed.
+    /// @param lastUpdated The timestamp of the last update.
+    /// @return The time elapsed in the given epoch.
+    function _timeElapsedInEpoch(uint40 epoch, uint40 lastUpdated) internal view returns (uint256) {
+        // Get the start and end timestamps for the given epoch.
+        uint256 startTimestamp = getEpochStartTimestamp(epoch);
+        uint256 endTimestamp = getEpochEndTimestamp(epoch);
+
+        // Calculate the time elapsed in the given epoch.
+        if (block.timestamp >= startTimestamp && block.timestamp < endTimestamp) {
+            // If the epoch is still ongoing, calculate the time elapsed since the last update or the start
+            // of the epoch.
+            return lastUpdated > startTimestamp ? block.timestamp - lastUpdated : block.timestamp - startTimestamp;
+        } else {
+            // If the epoch has ended, calculate the time elapsed since the last update or the entire
+            // duration of the epoch.
+            return lastUpdated > startTimestamp ? endTimestamp - lastUpdated : EPOCH_DURATION;
+        }
     }
 
     /// @notice Adds the given delta to the first current amount up to uint96 max value. If it exceeds, it adds it to

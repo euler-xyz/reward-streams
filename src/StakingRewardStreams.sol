@@ -30,10 +30,12 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
     function stake(address rewarded, uint256 amount) external virtual override nonReentrant {
         address msgSender = _msgSender();
 
+        if (amount == type(uint256).max) {
+            amount = IERC20(rewarded).balanceOf(msgSender);
+        }
+
         if (amount == 0) {
             revert InvalidAmount();
-        } else if (amount == type(uint256).max) {
-            amount = IERC20(rewarded).balanceOf(msgSender);
         }
 
         uint256 currentAccountBalance = accountBalances[msgSender][rewarded];
@@ -43,20 +45,14 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
             address reward = rewardsArray[i];
             uint256 currentTotalEligible = distributionTotals[rewarded][reward].totalEligible;
 
-            updateRewardTokenData(msgSender, rewarded, reward, currentTotalEligible, currentAccountBalance, false);
+            updateData(msgSender, rewarded, reward, currentTotalEligible, currentAccountBalance, false);
 
             distributionTotals[rewarded][reward].totalEligible = currentTotalEligible + amount;
         }
 
         accountBalances[msgSender][rewarded] = currentAccountBalance + amount;
 
-        uint256 oldBalance = IERC20(rewarded).balanceOf(address(this));
-        IERC20(rewarded).safeTransferFrom(msgSender, address(this), amount);
-
-        // If the balance of the contract did not increase by the staked amount, revert.
-        if (IERC20(rewarded).balanceOf(address(this)) - oldBalance != amount) {
-            revert InvalidAmount();
-        }
+        pullToken(IERC20(rewarded), msgSender, amount);
 
         emit Staked(msgSender, rewarded, amount);
     }
@@ -75,10 +71,12 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
     ) external virtual override nonReentrant {
         address msgSender = _msgSender();
 
+        if (amount == type(uint256).max) {
+            amount = accountBalances[msgSender][rewarded];
+        }
+
         if (amount == 0) {
             revert InvalidAmount();
-        } else if (amount == type(uint256).max) {
-            amount = accountBalances[msgSender][rewarded];
         }
 
         uint256 currentAccountBalance = accountBalances[msgSender][rewarded];
@@ -88,9 +86,7 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
             address reward = rewardsArray[i];
             uint256 currentTotalEligible = distributionTotals[rewarded][reward].totalEligible;
 
-            updateRewardTokenData(
-                msgSender, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward
-            );
+            updateData(msgSender, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward);
 
             distributionTotals[rewarded][reward].totalEligible = currentTotalEligible - amount;
         }

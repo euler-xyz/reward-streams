@@ -15,7 +15,6 @@ import "./interfaces/IBalanceForwarder.sol";
 /// - the current account's balance when the balance forwarding is enabled
 /// - the account's balance of 0 when the balance forwarding is disabled
 contract StakingFreeRewardStreams is BaseRewardStreams, IStakingFreeRewardStreams {
-    using SafeERC20 for IERC20;
     using Set for SetStorage;
 
     /// @notice Constructor for the StakingFreeRewardStreams contract.
@@ -40,9 +39,7 @@ contract StakingFreeRewardStreams is BaseRewardStreams, IStakingFreeRewardStream
             address reward = rewardsArray[i];
             uint256 currentTotalEligible = distributionTotals[rewarded][reward].totalEligible;
 
-            updateRewardTokenData(
-                account, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward
-            );
+            updateData(account, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward);
 
             distributionTotals[rewarded][reward].totalEligible =
                 currentTotalEligible + newAccountBalance - currentAccountBalance;
