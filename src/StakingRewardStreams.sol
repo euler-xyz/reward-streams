@@ -36,19 +36,19 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
             amount = IERC20(rewarded).balanceOf(msgSender);
         }
 
-        uint256 currentBalance = balances[msgSender][rewarded];
-        address[] memory rewardsArray = rewards[msgSender][rewarded].get();
+        uint256 currentAccountBalance = accountBalances[msgSender][rewarded];
+        address[] memory rewardsArray = accountEnabledRewards[msgSender][rewarded].get();
 
         for (uint256 i; i < rewardsArray.length; ++i) {
             address reward = rewardsArray[i];
-            uint256 currentTotal = totals[rewarded][reward].totalEligible;
+            uint256 currentTotalEligible = distributionTotals[rewarded][reward].totalEligible;
 
-            updateRewardTokenData(msgSender, rewarded, reward, currentTotal, currentBalance, false);
+            updateRewardTokenData(msgSender, rewarded, reward, currentTotalEligible, currentAccountBalance, false);
 
-            totals[rewarded][reward].totalEligible = currentTotal + amount;
+            distributionTotals[rewarded][reward].totalEligible = currentTotalEligible + amount;
         }
 
-        balances[msgSender][rewarded] = currentBalance + amount;
+        accountBalances[msgSender][rewarded] = currentAccountBalance + amount;
 
         uint256 oldBalance = IERC20(rewarded).balanceOf(address(this));
         IERC20(rewarded).safeTransferFrom(msgSender, address(this), amount);
@@ -78,22 +78,24 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
         if (amount == 0) {
             revert InvalidAmount();
         } else if (amount == type(uint256).max) {
-            amount = balances[msgSender][rewarded];
+            amount = accountBalances[msgSender][rewarded];
         }
 
-        uint256 currentBalance = balances[msgSender][rewarded];
-        address[] memory rewardsArray = rewards[msgSender][rewarded].get();
+        uint256 currentAccountBalance = accountBalances[msgSender][rewarded];
+        address[] memory rewardsArray = accountEnabledRewards[msgSender][rewarded].get();
 
         for (uint256 i; i < rewardsArray.length; ++i) {
             address reward = rewardsArray[i];
-            uint256 currentTotal = totals[rewarded][reward].totalEligible;
+            uint256 currentTotalEligible = distributionTotals[rewarded][reward].totalEligible;
 
-            updateRewardTokenData(msgSender, rewarded, reward, currentTotal, currentBalance, forfeitRecentReward);
+            updateRewardTokenData(
+                msgSender, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward
+            );
 
-            totals[rewarded][reward].totalEligible = currentTotal - amount;
+            distributionTotals[rewarded][reward].totalEligible = currentTotalEligible - amount;
         }
 
-        balances[msgSender][rewarded] = currentBalance - amount;
+        accountBalances[msgSender][rewarded] = currentAccountBalance - amount;
 
         IERC20(rewarded).safeTransfer(recipient, amount);
 

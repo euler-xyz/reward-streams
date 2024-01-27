@@ -25,22 +25,29 @@ contract StakingFreeRewardStreams is BaseRewardStreams, IStakingFreeRewardStream
 
     /// @notice Executes the balance tracking hook for an account
     /// @param account The account address to execute the hook for
-    /// @param newBalance The new balance of the account
+    /// @param newAccountBalance The new balance of the account
     /// @param forfeitRecentReward Whether to forfeit the most recent reward and not update the accumulator
-    function balanceTrackerHook(address account, uint256 newBalance, bool forfeitRecentReward) external override {
+    function balanceTrackerHook(
+        address account,
+        uint256 newAccountBalance,
+        bool forfeitRecentReward
+    ) external override {
         address rewarded = msg.sender;
-        uint256 currentBalance = balances[account][rewarded];
-        address[] memory rewardsArray = rewards[account][rewarded].get();
+        uint256 currentAccountBalance = accountBalances[account][rewarded];
+        address[] memory rewardsArray = accountEnabledRewards[account][rewarded].get();
 
         for (uint256 i; i < rewardsArray.length; ++i) {
             address reward = rewardsArray[i];
-            uint256 currentTotal = totals[rewarded][reward].totalEligible;
+            uint256 currentTotalEligible = distributionTotals[rewarded][reward].totalEligible;
 
-            updateRewardTokenData(account, rewarded, reward, currentTotal, currentBalance, forfeitRecentReward);
+            updateRewardTokenData(
+                account, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward
+            );
 
-            totals[rewarded][reward].totalEligible = currentTotal + newBalance - currentBalance;
+            distributionTotals[rewarded][reward].totalEligible =
+                currentTotalEligible + newAccountBalance - currentAccountBalance;
         }
 
-        balances[account][rewarded] = newBalance;
+        accountBalances[account][rewarded] = newAccountBalance;
     }
 }

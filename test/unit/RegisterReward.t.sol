@@ -101,11 +101,11 @@ contract RegisterRewardTest is Test {
 
         // verify that the distribution and totals storage were properly initialized
         assertEq(
-            abi.encode(distributor.getDistribution(rewarded, reward)),
+            abi.encode(distributor.getDistributionData(rewarded, reward)),
             abi.encode(BaseRewardStreams.DistributionStorage({lastUpdated: uint40(block.timestamp), accumulator: 0}))
         );
         assertEq(
-            abi.encode(distributor.getTotals(rewarded, reward)),
+            abi.encode(distributor.getDistributionTotals(rewarded, reward)),
             abi.encode(
                 BaseRewardStreams.TotalsStorage({totalRegistered: totalAmount, totalClaimed: 0, totalEligible: 0})
             )
@@ -144,11 +144,11 @@ contract RegisterRewardTest is Test {
 
         // verify that the totals storage was properly updated (no time elapsed)
         assertEq(
-            abi.encode(distributor.getDistribution(rewarded, reward)),
+            abi.encode(distributor.getDistributionData(rewarded, reward)),
             abi.encode(BaseRewardStreams.DistributionStorage({lastUpdated: uint40(block.timestamp), accumulator: 0}))
         );
         assertEq(
-            abi.encode(distributor.getTotals(rewarded, reward)),
+            abi.encode(distributor.getDistributionTotals(rewarded, reward)),
             abi.encode(
                 BaseRewardStreams.TotalsStorage({
                     totalRegistered: uint128(preBalance) + totalAmount,
@@ -199,11 +199,11 @@ contract RegisterRewardTest is Test {
 
         // verify that the totals storage was properly updated (considering that some has time elapsed)
         assertEq(
-            abi.encode(distributor.getDistribution(rewarded, reward)),
+            abi.encode(distributor.getDistributionData(rewarded, reward)),
             abi.encode(BaseRewardStreams.DistributionStorage({lastUpdated: uint40(block.timestamp), accumulator: 0}))
         );
         assertEq(
-            abi.encode(distributor.getTotals(rewarded, reward)),
+            abi.encode(distributor.getDistributionTotals(rewarded, reward)),
             abi.encode(
                 BaseRewardStreams.TotalsStorage({
                     totalRegistered: uint128(preBalance) + totalAmount,
@@ -302,8 +302,8 @@ contract RegisterRewardTest is Test {
             totalEligible: 0
         });
 
-        distributor.setDistribution(rewarded, reward, distribution);
-        distributor.setTotals(rewarded, reward, totals);
+        distributor.setDistributionData(rewarded, reward, distribution);
+        distributor.setDistributionTotals(rewarded, reward, totals);
 
         vm.startPrank(seeder);
         vm.expectRevert(BaseRewardStreams.AccumulatorOverflow.selector);
@@ -312,7 +312,7 @@ contract RegisterRewardTest is Test {
 
         // accumulator doesn't overflow if the total registered amount is less than the max value
         totals.totalRegistered -= 1;
-        distributor.setTotals(rewarded, reward, totals);
+        distributor.setDistributionTotals(rewarded, reward, totals);
 
         vm.startPrank(seeder);
         distributor.registerReward(rewarded, reward, 0, amounts);

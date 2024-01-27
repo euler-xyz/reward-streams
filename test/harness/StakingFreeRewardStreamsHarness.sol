@@ -14,47 +14,52 @@ contract StakingFreeRewardStreamsHarness is StakingFreeRewardStreams {
         distributionAmounts[rewarded][reward][_storageIndex(epoch)][_epochIndex(epoch)] = amount;
     }
 
-    function getDistribution(address rewarded, address reward) external view returns (DistributionStorage memory) {
-        return distribution[rewarded][reward];
+    function getDistributionData(address rewarded, address reward) external view returns (DistributionStorage memory) {
+        return distributionData[rewarded][reward];
     }
 
-    function setDistribution(
+    function setDistributionData(
         address rewarded,
         address reward,
         DistributionStorage calldata distributionStorage
     ) external {
-        distribution[rewarded][reward] = distributionStorage;
+        distributionData[rewarded][reward] = distributionStorage;
     }
 
-    function getTotals(address rewarded, address reward) external view returns (TotalsStorage memory) {
-        return totals[rewarded][reward];
+    function getDistributionTotals(address rewarded, address reward) external view returns (TotalsStorage memory) {
+        return distributionTotals[rewarded][reward];
     }
 
-    function setTotals(address rewarded, address reward, TotalsStorage calldata totalsStorage) external {
-        totals[rewarded][reward] = totalsStorage;
+    function setDistributionTotals(address rewarded, address reward, TotalsStorage calldata totalsStorage) external {
+        distributionTotals[rewarded][reward] = totalsStorage;
     }
 
-    function getBalance(address account, address rewarded) external view returns (uint256) {
-        return balances[account][rewarded];
+    function getAccountBalance(address account, address rewarded) external view returns (uint256) {
+        return accountBalances[account][rewarded];
     }
 
-    function setBalance(address account, address rewarded, uint256 balance) external {
-        balances[account][rewarded] = balance;
-    }
-
-    function getRewards(address account, address rewarded) external view returns (address[] memory) {
-        return rewards[account][rewarded].get();
+    function setAccountBalance(address account, address rewarded, uint256 balance) external {
+        accountBalances[account][rewarded] = balance;
     }
 
     function insertReward(address account, address rewarded, address reward) external {
-        rewards[account][rewarded].insert(reward);
+        accountEnabledRewards[account][rewarded].insert(reward);
     }
 
-    function getEarned(address account, address rewarded, address reward) external view returns (EarnStorage memory) {
-        return earned[account][rewarded][reward];
+    function getAccountEarnedData(
+        address account,
+        address rewarded,
+        address reward
+    ) external view returns (EarnStorage memory) {
+        return accountEarnedData[account][rewarded][reward];
     }
 
-    function setEarned(address account, address rewarded, address reward, EarnStorage calldata earnStorage) external {
-        earned[account][rewarded][reward] = earnStorage;
+    function setAccountEarnedData(
+        address account,
+        address rewarded,
+        address reward,
+        EarnStorage calldata earnStorage
+    ) external {
+        accountEarnedData[account][rewarded][reward] = earnStorage;
     }
 }

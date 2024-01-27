@@ -32,7 +32,7 @@ contract ViewTest is Test {
     }
 
     function test_BalanceOf(address account, address rewarded, uint256 balance) external {
-        distributor.setBalance(account, rewarded, balance);
+        distributor.setAccountBalance(account, rewarded, balance);
         assertEq(distributor.balanceOf(account, rewarded), balance);
     }
 
@@ -57,7 +57,7 @@ contract ViewTest is Test {
         BaseRewardStreams.TotalsStorage memory totals;
         totals.totalEligible = total;
 
-        distributor.setTotals(rewarded, reward, totals);
+        distributor.setDistributionTotals(rewarded, reward, totals);
         assertEq(distributor.totalRewardedEligible(rewarded, reward), totals.totalEligible);
     }
 
@@ -65,7 +65,7 @@ contract ViewTest is Test {
         BaseRewardStreams.TotalsStorage memory totals;
         totals.totalRegistered = total;
 
-        distributor.setTotals(rewarded, reward, totals);
+        distributor.setDistributionTotals(rewarded, reward, totals);
         assertEq(distributor.totalRewardRegistered(rewarded, reward), totals.totalRegistered);
     }
 
@@ -73,7 +73,7 @@ contract ViewTest is Test {
         BaseRewardStreams.TotalsStorage memory totals;
         totals.totalClaimed = total;
 
-        distributor.setTotals(rewarded, reward, totals);
+        distributor.setDistributionTotals(rewarded, reward, totals);
         assertEq(distributor.totalRewardClaimed(rewarded, reward), totals.totalClaimed);
     }
 
