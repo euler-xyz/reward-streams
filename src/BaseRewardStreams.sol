@@ -4,19 +4,18 @@ pragma solidity ^0.8.23;
 
 import "openzeppelin/utils/ReentrancyGuard.sol";
 import "openzeppelin/token/ERC20/utils/SafeERC20.sol";
+import "evc/utils/EVCUtil.sol";
 import "evc/Set.sol";
-import "evc/interfaces/IEthereumVaultConnector.sol";
 import "./interfaces/IRewardStreams.sol";
 
 /// @title BaseRewardStreams
 /// @author Euler Labs (https://www.eulerlabs.com/)
 /// @notice This contract is a base class for rewards distributors that allow anyone to register a reward scheme for a
 /// rewarded token.
-abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
+abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using Set for SetStorage;
 
-    IEVC public immutable EVC;
     uint256 public immutable EPOCH_DURATION;
     uint256 public constant MAX_EPOCHS_AHEAD = 5;
     uint256 public constant MAX_DISTRIBUTION_LENGTH = 25;
@@ -74,15 +73,14 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
         accountEarnedData;
 
     /// @notice Constructor for the BaseRewardStreams contract.
-    /// @param evc The Ethereum Vault Connector contract.
-    /// @param epochDuration The duration of an epoch.
-    constructor(IEVC evc, uint40 epochDuration) {
-        if (epochDuration < 7 days) {
+    /// @param _evc The Ethereum Vault Connector contract.
+    /// @param _epochDuration The duration of an epoch.
+    constructor(IEVC _evc, uint40 _epochDuration) EVCUtil(_evc) {
+        if (_epochDuration < 7 days) {
             revert InvalidEpoch();
         }
 
-        EVC = evc;
-        EPOCH_DURATION = epochDuration;
+        EPOCH_DURATION = _epochDuration;
     }
 
     /// @notice Registers a new reward scheme.
@@ -603,19 +601,5 @@ abstract contract BaseRewardStreams is IRewardStreams, ReentrancyGuard {
             total1 = uint96(current1);
             total2 = uint96(current2);
         }
-    }
-
-    /// @notice Retrieves the message sender in the context of the EVC.
-    /// @dev This function returns the account on behalf of which the current operation is being performed, which is
-    /// either msg.sender or the account authenticated by the EVC.
-    /// @return The address of the message sender.
-    function _msgSender() internal view virtual returns (address) {
-        address sender = msg.sender;
-
-        if (sender == address(EVC)) {
-            (sender,) = EVC.getCurrentOnBehalfOfAccount(address(0));
-        }
-
-        return sender;
     }
 }
