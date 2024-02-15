@@ -107,12 +107,12 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         }
 
         // distribution scheme should be at least 1 and at most MAX_DISTRIBUTION_LENGTH epochs long
-        if (!(rewardAmounts.length > 0 && rewardAmounts.length <= MAX_DISTRIBUTION_LENGTH)) {
+        if (rewardAmounts.length == 0 || rewardAmounts.length > MAX_DISTRIBUTION_LENGTH) {
             revert InvalidAmount();
         }
 
         // calculate the total amount to be distributed in this distribution scheme
-        uint256 totalAmount = 0;
+        uint256 totalAmount;
         for (uint256 i; i < rewardAmounts.length; ++i) {
             totalAmount += rewardAmounts[i];
         }
@@ -128,13 +128,15 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             updateReward(rewarded, reward, address(0));
         }
 
-        uint256 totalRegistered = uint256(distributionTotals[rewarded][reward].totalRegistered) + totalAmount;
-        distributionTotals[rewarded][reward].totalRegistered = uint128(totalRegistered);
-
         // sanity check for overflow (assumes total eligible supply of 1 which is the worst case scenario)
+        uint256 totalRegistered = uint256(distributionTotals[rewarded][reward].totalRegistered) + totalAmount;
+
         if (SCALER * totalRegistered > type(uint160).max) {
             revert AccumulatorOverflow();
         }
+
+        // update the total registered amount
+        distributionTotals[rewarded][reward].totalRegistered = uint128(totalRegistered);
 
         // store the amounts to be distributed
         storeAmounts(rewarded, reward, startEpoch, rewardAmounts);
@@ -250,9 +252,10 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         address reward,
         bool forfeitRecentReward
     ) external view virtual override returns (uint256) {
+        EarnStorage memory accountEarned = accountEarnedData[account][rewarded][reward];
+
         uint256 currentAccountBalance =
             accountEnabledRewards[account][rewarded].contains(reward) ? accountBalances[account][rewarded] : 0;
-        EarnStorage memory accountEarned = accountEarnedData[account][rewarded][reward];
 
         uint256 deltaAccountZero = getUpdatedData(
             distributionData[rewarded][reward],
@@ -264,7 +267,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             forfeitRecentReward
         );
 
-        if (account == address(0) && deltaAccountZero > 0) {
+        if (account == address(0) && deltaAccountZero != 0) {
             (accountEarned.amount,) = _addDeltaToCurrents(accountEarned.amount, 0, deltaAccountZero);
         }
 
@@ -377,14 +380,16 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         uint256 startStorageIndex = _storageIndex(startEpoch);
         uint256 endStorageIndex = _storageIndex(startEpoch + length - 1);
 
-        uint256 memoryIndex = 0;
+        uint256 memoryIndex;
         uint128[EPOCHS_PER_SLOT] memory amounts;
         for (uint256 i = startStorageIndex; i <= endStorageIndex; ++i) {
             amounts = distributionAmounts[rewarded][reward][i];
 
             // assign amounts to the appropriate indices based on the epoch
             for (uint256 j = _epochIndex(startEpoch + memoryIndex); j < EPOCHS_PER_SLOT && memoryIndex < length; ++j) {
-                amounts[j] += amountsToBeStored[memoryIndex++];
+                unchecked {
+                    amounts[j] += amountsToBeStored[memoryIndex++];
+                }
             }
 
             distributionAmounts[rewarded][reward][i] = amounts;
@@ -406,7 +411,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         uint128 amount = accountEarnedData[msgSender][rewarded][reward].amount;
 
         // If there is a reward token to claim, transfer it to the recipient and emit an event.
-        if (amount > 0) {
+        if (amount != 0) {
             uint128 totalRegistered = distributionTotals[rewarded][reward].totalRegistered;
             uint128 totalClaimed = distributionTotals[rewarded][reward].totalClaimed;
 
@@ -453,7 +458,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         distributionData[rewarded][reward] = distribution;
         accountEarnedData[account][rewarded][reward] = accountEarned;
 
-        if (deltaAccountZero > 0) {
+        if (deltaAccountZero != 0) {
             (accountEarnedData[address(0)][rewarded][reward].amount,) =
                 _addDeltaToCurrents(accountEarnedData[address(0)][rewarded][reward].amount, 0, deltaAccountZero);
         }
@@ -488,7 +493,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             uint40 epochStart = getEpoch(lastUpdated);
             uint40 epochEnd = currentEpoch();
             uint128[EPOCHS_PER_SLOT] memory amounts;
-            uint256 delta = 0;
+            uint256 delta;
 
             // Calculate the amount of tokens since last update that should be distributed.
             for (uint40 i = epochStart; i <= epochEnd; ++i) {
@@ -585,21 +590,21 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @param current1 The first current amount.
     /// @param current2 The second current amount.
     /// @param delta The amount to add to the current amounts.
-    /// @return total1 The total of the first current amount after adding the delta.
-    /// @return total2 The total of the second current amount after adding the remaining delta.
+    /// @return final1 The final amount of the first current after adding the delta.
+    /// @return final2 The total of the second current amount after adding the remaining delta.
     function _addDeltaToCurrents(
         uint256 current1,
         uint256 current2,
         uint256 delta
-    ) internal pure returns (uint96 total1, uint256 total2) {
+    ) internal pure returns (uint96 final1, uint256 final2) {
         current1 += delta;
 
         if (current1 > type(uint96).max) {
-            total1 = type(uint96).max;
-            total2 = current2 + (current1 - type(uint96).max);
+            final1 = type(uint96).max;
+            final2 = current2 + (current1 - type(uint96).max);
         } else {
-            total1 = uint96(current1);
-            total2 = uint96(current2);
+            final1 = uint96(current1);
+            final2 = uint96(current2);
         }
     }
 }
