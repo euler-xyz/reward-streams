@@ -42,7 +42,7 @@ contract StakingFreeRewardStreams is BaseRewardStreams, IStakingFreeRewardStream
             updateData(account, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward);
 
             distributionTotals[rewarded][reward].totalEligible =
-                currentTotalEligible + newAccountBalance - currentAccountBalance;
+                currentTotalEligible - currentAccountBalance + newAccountBalance;
         }
 
         accountBalances[account][rewarded] = newAccountBalance;
