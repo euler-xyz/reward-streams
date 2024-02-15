@@ -155,7 +155,7 @@ contract ScenarioTest is Test {
     ) external {
         vm.assume(
             participant != address(0) && participant != address(evc) && participant != address(stakingDistributor)
-                && participant != stakingRewarded
+                && participant != stakingRewarded && participant != address(stakingFreeDistributor)
         );
         blockTimestamp = uint40(bound(blockTimestamp, 1, type(uint40).max - 365 days));
         amountsLength = uint8(bound(amountsLength, 1, 25));
@@ -340,7 +340,7 @@ contract ScenarioTest is Test {
     ) external {
         vm.assume(
             participant != address(0) && participant != address(evc) && participant != address(stakingDistributor)
-                && participant != stakingRewarded
+                && participant != stakingRewarded && participant != address(stakingFreeDistributor)
         );
         blockTimestamp = uint40(bound(blockTimestamp, 1, type(uint40).max - 365 days));
         amountsLength = uint8(bound(amountsLength, 1, 25));
@@ -454,10 +454,12 @@ contract ScenarioTest is Test {
         vm.assume(
             participant1 != address(0) && participant1 != address(1) && participant1 != address(evc)
                 && participant1 != address(stakingDistributor) && participant1 != stakingRewarded
+                && participant1 != address(stakingFreeDistributor)
         );
         vm.assume(
             participant2 != address(0) && participant2 != address(1) && participant2 != address(evc)
                 && participant2 != address(stakingDistributor) && participant2 != stakingRewarded
+                && participant2 != address(stakingFreeDistributor)
         );
         vm.assume(participant1 != participant2);
         blockTimestamp = uint40(bound(blockTimestamp, 1, type(uint40).max - 365 days));
@@ -532,10 +534,10 @@ contract ScenarioTest is Test {
         assertApproxEqRel(
             stakingFreeDistributor.earnedReward(participant1, stakingFreeRewarded, reward, false), 2.5e18, ALLOWED_DELTA
         );
-        assertApproxEqRel(stakingDistributor.earnedReward(participant2, stakingRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0, 0);
+        assertEq(stakingDistributor.earnedReward(participant2, stakingRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward, false), 0);
+        assertEq(stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0);
 
         // participant 2 comes into play
         vm.startPrank(participant2);
@@ -563,8 +565,8 @@ contract ScenarioTest is Test {
         assertApproxEqRel(
             stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward, false), 2.5e18, ALLOWED_DELTA
         );
-        assertApproxEqRel(stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0, 0);
+        assertEq(stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0);
 
         // participant 1 disables rewards
         vm.startPrank(participant1);
@@ -588,8 +590,8 @@ contract ScenarioTest is Test {
         assertApproxEqRel(
             stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward, false), 5e18, ALLOWED_DELTA
         );
-        assertApproxEqRel(stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0, 0);
+        assertEq(stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0);
 
         // participant 1 enables rewards again and doubles down
         vm.startPrank(participant1);
@@ -620,8 +622,8 @@ contract ScenarioTest is Test {
             6.666667e18,
             ALLOWED_DELTA
         );
-        assertApproxEqRel(stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0, 0);
+        assertEq(stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0);
 
         // both participants change their eligible balances
         vm.startPrank(participant1);
@@ -654,8 +656,8 @@ contract ScenarioTest is Test {
             12.291667e18,
             ALLOWED_DELTA
         );
-        assertApproxEqRel(stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0, 0);
+        assertEq(stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0);
 
         // participant 1 adds more balance; both participants have equal eligible balances now
         vm.startPrank(participant1);
@@ -683,8 +685,8 @@ contract ScenarioTest is Test {
             16.666667e18,
             ALLOWED_DELTA
         );
-        assertApproxEqRel(stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0, 0);
+        assertEq(stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0);
 
         // both participants reduce their eligible balances to zero hence address(0) earns all the rewards in that
         // period
@@ -785,11 +787,11 @@ contract ScenarioTest is Test {
         vm.startPrank(participant2);
         preBalance = MockERC20(reward).balanceOf(participant2);
         stakingDistributor.updateReward(stakingRewarded, reward, participant2);
-        assertApproxEqRel(MockERC20(reward).balanceOf(participant2), preBalance, 0);
+        assertEq(MockERC20(reward).balanceOf(participant2), preBalance);
 
         preBalance = MockERC20(reward).balanceOf(participant2);
         stakingFreeDistributor.updateReward(stakingFreeRewarded, reward, participant2);
-        assertApproxEqRel(MockERC20(reward).balanceOf(participant2), preBalance, 0);
+        assertEq(MockERC20(reward).balanceOf(participant2), preBalance);
         vm.stopPrank();
 
         // verify earnings
@@ -809,8 +811,8 @@ contract ScenarioTest is Test {
             19.791667e18,
             ALLOWED_DELTA
         );
-        assertApproxEqRel(stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0, 0);
+        assertEq(stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0);
 
         // participant2 reduces his eligible balance to zero
         vm.startPrank(participant2);
@@ -838,8 +840,8 @@ contract ScenarioTest is Test {
             19.791667e18,
             ALLOWED_DELTA
         );
-        assertApproxEqRel(stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0, 0);
+        assertEq(stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0);
 
         // participant1 opts out too; now address(0) earns all the rewards
         vm.startPrank(participant1);
@@ -907,12 +909,12 @@ contract ScenarioTest is Test {
 
         // sanity checks
         vm.warp(block.timestamp + 50 days);
-        assertApproxEqRel(stakingDistributor.earnedReward(participant1, stakingRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(participant1, stakingFreeRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingDistributor.earnedReward(participant2, stakingRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0, 0);
+        assertEq(stakingDistributor.earnedReward(participant1, stakingRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(participant1, stakingFreeRewarded, reward, false), 0);
+        assertEq(stakingDistributor.earnedReward(participant2, stakingRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward, false), 0);
+        assertEq(stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0);
         assertEq(stakingDistributor.enabledRewards(participant1, stakingRewarded)[0], reward);
         assertEq(stakingDistributor.enabledRewards(participant2, stakingRewarded).length, 0);
         assertEq(stakingFreeDistributor.enabledRewards(participant1, stakingFreeRewarded).length, 0);
@@ -937,10 +939,12 @@ contract ScenarioTest is Test {
         vm.assume(
             participant1 != address(0) && participant1 != address(1) && participant1 != address(evc)
                 && participant1 != address(stakingDistributor) && participant1 != stakingRewarded
+                && participant1 != address(stakingFreeDistributor)
         );
         vm.assume(
             participant2 != address(0) && participant2 != address(1) && participant2 != address(evc)
                 && participant2 != address(stakingDistributor) && participant2 != stakingRewarded
+                && participant2 != address(stakingFreeDistributor)
         );
         vm.assume(participant1 != participant2);
         blockTimestamp = uint40(bound(blockTimestamp, 1, type(uint40).max - 365 days));
@@ -1026,22 +1030,22 @@ contract ScenarioTest is Test {
         vm.warp(block.timestamp + 5 days);
 
         // verify earnings
-        assertApproxEqRel(stakingDistributor.earnedReward(participant1, stakingRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(participant1, stakingFreeRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingDistributor.earnedReward(participant2, stakingRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward, false), 0, 0);
+        assertEq(stakingDistributor.earnedReward(participant1, stakingRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(participant1, stakingFreeRewarded, reward, false), 0);
+        assertEq(stakingDistributor.earnedReward(participant2, stakingRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward, false), 0);
         assertApproxEqRel(
             stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false), 1e18, ALLOWED_DELTA
         );
         assertApproxEqRel(
             stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 1e18, ALLOWED_DELTA
         );
-        assertApproxEqRel(stakingDistributor.earnedReward(participant1, stakingRewarded, reward2, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(participant1, stakingFreeRewarded, reward2, false), 0, 0);
-        assertApproxEqRel(stakingDistributor.earnedReward(participant2, stakingRewarded, reward2, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward2, false), 0, 0);
-        assertApproxEqRel(stakingDistributor.earnedReward(address(0), stakingRewarded, reward2, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward2, false), 0, 0);
+        assertEq(stakingDistributor.earnedReward(participant1, stakingRewarded, reward2, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(participant1, stakingFreeRewarded, reward2, false), 0);
+        assertEq(stakingDistributor.earnedReward(participant2, stakingRewarded, reward2, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward2, false), 0);
+        assertEq(stakingDistributor.earnedReward(address(0), stakingRewarded, reward2, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward2, false), 0);
 
         // participant 1: has eligible balance for both rewards
         // participant 2: has eligible balance only for reward2
@@ -1065,20 +1069,20 @@ contract ScenarioTest is Test {
         assertApproxEqRel(
             stakingFreeDistributor.earnedReward(participant1, stakingFreeRewarded, reward, false), 1e18, ALLOWED_DELTA
         );
-        assertApproxEqRel(stakingDistributor.earnedReward(participant2, stakingRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward, false), 0, 0);
+        assertEq(stakingDistributor.earnedReward(participant2, stakingRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward, false), 0);
         assertApproxEqRel(
             stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false), 1e18, ALLOWED_DELTA
         );
         assertApproxEqRel(
             stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 1e18, ALLOWED_DELTA
         );
-        assertApproxEqRel(stakingDistributor.earnedReward(participant1, stakingRewarded, reward2, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(participant1, stakingFreeRewarded, reward2, false), 0, 0);
-        assertApproxEqRel(stakingDistributor.earnedReward(participant2, stakingRewarded, reward2, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward2, false), 0, 0);
-        assertApproxEqRel(stakingDistributor.earnedReward(address(0), stakingRewarded, reward2, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward2, false), 0, 0);
+        assertEq(stakingDistributor.earnedReward(participant1, stakingRewarded, reward2, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(participant1, stakingFreeRewarded, reward2, false), 0);
+        assertEq(stakingDistributor.earnedReward(participant2, stakingRewarded, reward2, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward2, false), 0);
+        assertEq(stakingDistributor.earnedReward(address(0), stakingRewarded, reward2, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward2, false), 0);
 
         // forward the time
         vm.warp(block.timestamp + 5 days);
@@ -1090,8 +1094,8 @@ contract ScenarioTest is Test {
         assertApproxEqRel(
             stakingFreeDistributor.earnedReward(participant1, stakingFreeRewarded, reward, false), 2e18, ALLOWED_DELTA
         );
-        assertApproxEqRel(stakingDistributor.earnedReward(participant2, stakingRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward, false), 0, 0);
+        assertEq(stakingDistributor.earnedReward(participant2, stakingRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward, false), 0);
         assertApproxEqRel(
             stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false), 1e18, ALLOWED_DELTA
         );
@@ -1114,8 +1118,8 @@ contract ScenarioTest is Test {
             1.333334e18,
             ALLOWED_DELTA
         );
-        assertApproxEqRel(stakingDistributor.earnedReward(address(0), stakingRewarded, reward2, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward2, false), 0, 0);
+        assertEq(stakingDistributor.earnedReward(address(0), stakingRewarded, reward2, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward2, false), 0);
 
         // participant 1: increases eligible balance for both rewards
         // participant 2: increases eligible balance for both rewards
@@ -1174,8 +1178,8 @@ contract ScenarioTest is Test {
             2.666667e18,
             ALLOWED_DELTA
         );
-        assertApproxEqRel(stakingDistributor.earnedReward(address(0), stakingRewarded, reward2, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward2, false), 0, 0);
+        assertEq(stakingDistributor.earnedReward(address(0), stakingRewarded, reward2, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward2, false), 0);
 
         // participant 1: disables reward2
         // participant 2: disables reward
@@ -1231,8 +1235,8 @@ contract ScenarioTest is Test {
             3.166667e18,
             ALLOWED_DELTA
         );
-        assertApproxEqRel(stakingDistributor.earnedReward(address(0), stakingRewarded, reward2, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward2, false), 0, 0);
+        assertEq(stakingDistributor.earnedReward(address(0), stakingRewarded, reward2, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward2, false), 0);
 
         // participant 1: enables reward2 again, but disables reward
         // participant 2: does nothing
@@ -1285,8 +1289,8 @@ contract ScenarioTest is Test {
             3.5e18,
             ALLOWED_DELTA
         );
-        assertApproxEqRel(stakingDistributor.earnedReward(address(0), stakingRewarded, reward2, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward2, false), 0, 0);
+        assertEq(stakingDistributor.earnedReward(address(0), stakingRewarded, reward2, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward2, false), 0);
 
         // participant 1: gets rid of the eligible balance
         // participant 2: disables reward2, but enables reward
@@ -1655,18 +1659,18 @@ contract ScenarioTest is Test {
         assertApproxEqRel(MockERC20(reward2).balanceOf(address(this)), preRewardBalance + 7e18, ALLOWED_DELTA);
 
         // sanity checks
-        assertApproxEqRel(stakingDistributor.earnedReward(participant1, stakingRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(participant1, stakingFreeRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingDistributor.earnedReward(participant1, stakingRewarded, reward2, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(participant1, stakingFreeRewarded, reward2, false), 0, 0);
-        assertApproxEqRel(stakingDistributor.earnedReward(participant2, stakingRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingDistributor.earnedReward(participant2, stakingRewarded, reward2, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward2, false), 0, 0);
-        assertApproxEqRel(stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingDistributor.earnedReward(address(0), stakingRewarded, reward2, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward2, false), 0, 0);
+        assertEq(stakingDistributor.earnedReward(participant1, stakingRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(participant1, stakingFreeRewarded, reward, false), 0);
+        assertEq(stakingDistributor.earnedReward(participant1, stakingRewarded, reward2, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(participant1, stakingFreeRewarded, reward2, false), 0);
+        assertEq(stakingDistributor.earnedReward(participant2, stakingRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward, false), 0);
+        assertEq(stakingDistributor.earnedReward(participant2, stakingRewarded, reward2, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward2, false), 0);
+        assertEq(stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0);
+        assertEq(stakingDistributor.earnedReward(address(0), stakingRewarded, reward2, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward2, false), 0);
         assertEq(stakingDistributor.enabledRewards(participant1, stakingRewarded).length, 0);
         assertEq(stakingFreeDistributor.enabledRewards(participant1, stakingFreeRewarded).length, 0);
         assertEq(stakingDistributor.enabledRewards(participant2, stakingRewarded)[0], reward2);
@@ -1706,14 +1710,17 @@ contract ScenarioTest is Test {
         vm.assume(
             participant1 != address(0) && participant1 != address(1) && participant1 != address(evc)
                 && participant1 != address(stakingDistributor) && participant1 != stakingRewarded
+                && participant1 != address(stakingFreeDistributor)
         );
         vm.assume(
             participant2 != address(0) && participant2 != address(1) && participant2 != address(evc)
                 && participant2 != address(stakingDistributor) && participant2 != stakingRewarded
+                && participant2 != address(stakingFreeDistributor)
         );
         vm.assume(
             participant3 != address(0) && participant3 != address(1) && participant3 != address(evc)
                 && participant3 != address(stakingDistributor) && participant3 != stakingRewarded
+                && participant3 != address(stakingFreeDistributor)
         );
         vm.assume(participant1 != participant2 && participant1 != participant3 && participant2 != participant3);
         blockTimestamp = uint40(bound(blockTimestamp, 1, type(uint40).max - 365 days));
@@ -1801,8 +1808,8 @@ contract ScenarioTest is Test {
         assertApproxEqRel(
             stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward, false), 7.6e18, ALLOWED_DELTA
         );
-        assertApproxEqRel(stakingDistributor.earnedReward(participant3, stakingRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(participant3, stakingFreeRewarded, reward, false), 0, 0);
+        assertEq(stakingDistributor.earnedReward(participant3, stakingRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(participant3, stakingFreeRewarded, reward, false), 0);
         assertApproxEqRel(
             stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false), 0.5e18, ALLOWED_DELTA
         );
@@ -1953,12 +1960,8 @@ contract ScenarioTest is Test {
         assertApproxEqRel(
             stakingFreeDistributor.earnedReward(participant1, stakingFreeRewarded, reward, false), 10e18, ALLOWED_DELTA
         );
-        assertApproxEqRel(
-            stakingDistributor.earnedReward(participant2, stakingRewarded, reward, false), 0, ALLOWED_DELTA
-        );
-        assertApproxEqRel(
-            stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward, false), 0, ALLOWED_DELTA
-        );
+        assertEq(stakingDistributor.earnedReward(participant2, stakingRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward, false), 0);
         assertApproxEqRel(
             stakingDistributor.earnedReward(participant3, stakingRewarded, reward, false), 2.5e18, ALLOWED_DELTA
         );
@@ -1993,7 +1996,7 @@ contract ScenarioTest is Test {
         assertApproxEqRel(stakingFreeDistributor.totalRewardClaimed(stakingFreeRewarded, reward), 22e18, ALLOWED_DELTA);
         assertApproxEqRel(MockERC20(reward).balanceOf(participant1), 2 * 4.4e18, ALLOWED_DELTA);
         assertApproxEqRel(MockERC20(reward).balanceOf(participant2), 2 * 17.6e18, ALLOWED_DELTA);
-        assertApproxEqRel(MockERC20(reward).balanceOf(participant3), 0, 0);
+        assertEq(MockERC20(reward).balanceOf(participant3), 0);
     }
 
     // balance tracker hook test
@@ -2057,9 +2060,9 @@ contract ScenarioTest is Test {
         assertApproxEqRel(
             stakingFreeDistributor.earnedReward(participant1, stakingFreeRewarded, reward, false), 15e18, ALLOWED_DELTA
         );
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(participant3, stakingFreeRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0, 0);
+        assertEq(stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(participant3, stakingFreeRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0);
 
         // participant 1 transfers tokens to participant 2
         vm.prank(participant1);
@@ -2077,8 +2080,8 @@ contract ScenarioTest is Test {
         assertApproxEqRel(
             stakingFreeDistributor.earnedReward(participant2, stakingFreeRewarded, reward, false), 2.5e18, ALLOWED_DELTA
         );
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(participant3, stakingFreeRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0, 0);
+        assertEq(stakingFreeDistributor.earnedReward(participant3, stakingFreeRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0);
 
         // participant 2 transfers tokens to participant 3
         vm.prank(participant2);
@@ -2099,7 +2102,7 @@ contract ScenarioTest is Test {
         assertApproxEqRel(
             stakingFreeDistributor.earnedReward(participant3, stakingFreeRewarded, reward, false), 5e18, ALLOWED_DELTA
         );
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0, 0);
+        assertEq(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0);
 
         // participant 3 gets all the tokens
         vm.prank(participant1);
@@ -2120,7 +2123,7 @@ contract ScenarioTest is Test {
         assertApproxEqRel(
             stakingFreeDistributor.earnedReward(participant3, stakingFreeRewarded, reward, false), 10e18, ALLOWED_DELTA
         );
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0, 0);
+        assertEq(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0);
 
         // participant 3 transfers all tokens to participant 2
         vm.prank(participant3);
@@ -2141,7 +2144,7 @@ contract ScenarioTest is Test {
         assertApproxEqRel(
             stakingFreeDistributor.earnedReward(participant3, stakingFreeRewarded, reward, false), 10e18, ALLOWED_DELTA
         );
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0, 0);
+        assertEq(stakingFreeDistributor.earnedReward(address(0), stakingFreeRewarded, reward, false), 0);
 
         // participant 2 transfers all tokens to an address that doesn't have the balance tracker enabled (i.e.
         // stakingFreeRewarded contract)
@@ -2198,7 +2201,7 @@ contract ScenarioTest is Test {
     function test_Scenario_8(uint40 blockTimestamp, address participant) external {
         vm.assume(
             participant != address(0) && participant != address(evc) && participant != address(stakingDistributor)
-                && participant != stakingRewarded
+                && participant != stakingRewarded && participant != address(stakingFreeDistributor)
         );
         blockTimestamp = uint40(bound(blockTimestamp, 1, type(uint40).max - 365 days));
 
@@ -2236,8 +2239,8 @@ contract ScenarioTest is Test {
         vm.warp(block.timestamp + 10);
 
         // verify earnings
-        assertApproxEqRel(stakingDistributor.earnedReward(participant, stakingRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(participant, stakingFreeRewarded, reward, false), 0, 0);
+        assertEq(stakingDistributor.earnedReward(participant, stakingRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(participant, stakingFreeRewarded, reward, false), 0);
 
         // verify that staking (or enabling balance forwarding) and unstaking (or disabling balance forwarding) within
         // the same block does not earn any rewards
@@ -2245,14 +2248,14 @@ contract ScenarioTest is Test {
         stakingDistributor.stake(stakingRewarded, 10e18);
         MockERC20BalanceForwarder(stakingFreeRewarded).enableBalanceForwarding();
 
-        assertApproxEqRel(stakingDistributor.earnedReward(participant, stakingRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(participant, stakingFreeRewarded, reward, false), 0, 0);
+        assertEq(stakingDistributor.earnedReward(participant, stakingRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(participant, stakingFreeRewarded, reward, false), 0);
 
         stakingDistributor.unstake(stakingRewarded, 10e18, participant, true);
         MockERC20BalanceForwarder(stakingFreeRewarded).disableBalanceForwarding();
 
-        assertApproxEqRel(stakingDistributor.earnedReward(participant, stakingRewarded, reward, false), 0, 0);
-        assertApproxEqRel(stakingFreeDistributor.earnedReward(participant, stakingFreeRewarded, reward, false), 0, 0);
+        assertEq(stakingDistributor.earnedReward(participant, stakingRewarded, reward, false), 0);
+        assertEq(stakingFreeDistributor.earnedReward(participant, stakingFreeRewarded, reward, false), 0);
 
         // try to claim
         uint256 preBalance = MockERC20(reward).balanceOf(participant);
@@ -2266,7 +2269,7 @@ contract ScenarioTest is Test {
     function test_Scenario_9(uint40 blockTimestamp, address participant) external {
         vm.assume(
             participant != address(0) && participant != address(evc) && participant != address(stakingDistributor)
-                && participant != stakingRewarded
+                && participant != stakingRewarded && participant != address(stakingFreeDistributor)
         );
         blockTimestamp = uint40(bound(blockTimestamp, 1, type(uint40).max - 365 days));
 
@@ -2314,11 +2317,9 @@ contract ScenarioTest is Test {
         vm.warp(block.timestamp + 10 days);
 
         // verify earnings
-        assertApproxEqRel(
-            stakingDistributor.earnedReward(participant, stakingRewarded, stakingRewarded, false), 10e18, 0
-        );
-        assertApproxEqRel(
-            stakingFreeDistributor.earnedReward(participant, stakingFreeRewarded, stakingFreeRewarded, false), 10e18, 0
+        assertEq(stakingDistributor.earnedReward(participant, stakingRewarded, stakingRewarded, false), 10e18);
+        assertEq(
+            stakingFreeDistributor.earnedReward(participant, stakingFreeRewarded, stakingFreeRewarded, false), 10e18
         );
 
         // claim and unstake
@@ -2403,7 +2404,7 @@ contract ScenarioTest is Test {
     function test_Scenario_Overflow(uint256 blockTimestamp, address participant) external {
         vm.assume(
             participant != address(0) && participant != address(evc) && participant != address(stakingDistributor)
-                && participant != stakingRewarded
+                && participant != stakingRewarded && participant != address(stakingFreeDistributor)
         );
         blockTimestamp = uint40(bound(blockTimestamp, 1, type(uint40).max - 365 days));
 
@@ -2454,12 +2455,8 @@ contract ScenarioTest is Test {
         vm.stopPrank();
 
         // verify earnings
-        assertApproxEqRel(
-            stakingDistributor.earnedReward(participant, stakingRewarded, reward, false), type(uint96).max, 0
-        );
-        assertApproxEqRel(
-            stakingFreeDistributor.earnedReward(participant, stakingFreeRewarded, reward, false), type(uint96).max, 0
-        );
+        assertEq(stakingDistributor.earnedReward(participant, stakingRewarded, reward, false), type(uint96).max);
+        assertEq(stakingFreeDistributor.earnedReward(participant, stakingFreeRewarded, reward, false), type(uint96).max);
         assertApproxEqRel(
             stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false),
             stakingDistributor.totalRewardRegistered(stakingRewarded, reward) - type(uint96).max,
