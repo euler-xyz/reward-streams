@@ -297,7 +297,7 @@ contract RegisterRewardTest is Test {
         BaseRewardStreams.DistributionStorage memory distribution =
             BaseRewardStreams.DistributionStorage({lastUpdated: uint40(1), accumulator: 0});
         BaseRewardStreams.TotalsStorage memory totals = BaseRewardStreams.TotalsStorage({
-            totalRegistered: uint128(type(uint160).max / 1e18),
+            totalRegistered: uint128(type(uint144).max / 1e12),
             totalClaimed: 0,
             totalEligible: 0
         });

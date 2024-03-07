@@ -21,7 +21,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     uint256 public constant MAX_DISTRIBUTION_LENGTH = 25;
     uint256 public constant MAX_REWARDS_ENABLED = 5;
     uint256 internal constant EPOCHS_PER_SLOT = 2;
-    uint256 internal constant SCALER = 1e18;
+    uint256 internal constant SCALER = 1e12;
 
     /// @notice Event emitted when a reward scheme is registered.
     event RewardRegistered(
@@ -42,23 +42,28 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     error AccumulatorOverflow();
     error TooManyRewardsEnabled();
 
-    /// @notice Struct to store distribution data.
+    /// @notice Struct to store distribution data per rewarded and reward tokens.
     struct DistributionStorage {
         uint40 lastUpdated;
-        uint160 accumulator;
+        uint144 accumulator;
     }
 
-    /// @notice Struct to store totals data.
+    /// @notice Struct to store totals data per rewarded and reward tokens.
     struct TotalsStorage {
+        /// @notice Total rewarded token that are eligible for rewards.
         uint256 totalEligible;
+        /// @notice Total reward token that have been transferred into this contract for rewards.
         uint128 totalRegistered;
+        /// @notice Total reward token that have been transferred out from this contract for rewards.
         uint128 totalClaimed;
     }
 
     /// @notice Struct to store earned data.
     struct EarnStorage {
-        uint96 amount;
-        uint160 accumulator;
+        /// @notice Claimable amount, not total earned.
+        uint112 amount;
+        /// @notice Snapshot of the accumulator at the time of the last data update.
+        uint144 accumulator;
     }
 
     mapping(address rewarded => mapping(address reward => mapping(uint256 storageIndex => uint128[EPOCHS_PER_SLOT])))
@@ -131,7 +136,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         // sanity check for overflow (assumes total eligible supply of 1 which is the worst case scenario)
         uint256 totalRegistered = uint256(distributionTotals[rewarded][reward].totalRegistered) + totalAmount;
 
-        if (SCALER * totalRegistered > type(uint160).max) {
+        if (SCALER * totalRegistered > type(uint144).max) {
             revert AccumulatorOverflow();
         }
 
@@ -155,6 +160,8 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @param recipient The address to receive the address(0) earned rewards.
     function updateReward(address rewarded, address reward, address recipient) public virtual override {
         address msgSender = _msgSender();
+
+        // If the account disables the rewards we pass an account balance of zero to not accrue any.
         uint256 currentAccountBalance =
             accountEnabledRewards[msgSender][rewarded].contains(reward) ? accountBalances[msgSender][rewarded] : 0;
 
@@ -183,6 +190,8 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         bool forfeitRecentReward
     ) external virtual override nonReentrant {
         address msgSender = _msgSender();
+
+        // If the account disables the rewards we pass an account balance of zero to not accrue any.
         uint256 currentAccountBalance =
             accountEnabledRewards[msgSender][rewarded].contains(reward) ? accountBalances[msgSender][rewarded] : 0;
 
@@ -213,6 +222,8 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             uint256 currentAccountBalance = accountBalances[msgSender][rewarded];
             uint256 currentTotalEligible = distributionTotals[rewarded][reward].totalEligible;
 
+            // We pass zero as `currentAccountBalance` to not distribute rewards for the period before the account
+            // enabled them.
             updateData(msgSender, rewarded, reward, currentTotalEligible, 0, false);
 
             distributionTotals[rewarded][reward].totalEligible = currentTotalEligible + currentAccountBalance;
@@ -254,10 +265,11 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     ) external view virtual override returns (uint256) {
         EarnStorage memory accountEarned = accountEarnedData[account][rewarded][reward];
 
+        // If the account disables the rewards we pass an account balance of zero to not accrue any.
         uint256 currentAccountBalance =
             accountEnabledRewards[account][rewarded].contains(reward) ? accountBalances[account][rewarded] : 0;
 
-        uint256 deltaAccountZero = getUpdatedData(
+        uint112 deltaAccountZero = getUpdatedData(
             distributionData[rewarded][reward],
             accountEarned,
             rewarded,
@@ -267,8 +279,9 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             forfeitRecentReward
         );
 
+        // If we have spillover rewards, we add them to address(0)
         if (account == address(0) && deltaAccountZero != 0) {
-            (accountEarned.amount,) = _addDeltaToCurrents(accountEarned.amount, 0, deltaAccountZero);
+            accountEarned.amount += deltaAccountZero;
         }
 
         return accountEarned.amount;
@@ -445,7 +458,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         DistributionStorage memory distribution = distributionData[rewarded][reward];
         EarnStorage memory accountEarned = accountEarnedData[account][rewarded][reward];
 
-        uint256 deltaAccountZero = getUpdatedData(
+        uint112 deltaAccountZero = getUpdatedData(
             distribution,
             accountEarned,
             rewarded,
@@ -458,9 +471,9 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         distributionData[rewarded][reward] = distribution;
         accountEarnedData[account][rewarded][reward] = accountEarned;
 
+        // If there were excess rewards, allocate them to address(0)
         if (deltaAccountZero != 0) {
-            (accountEarnedData[address(0)][rewarded][reward].amount,) =
-                _addDeltaToCurrents(accountEarnedData[address(0)][rewarded][reward].amount, 0, deltaAccountZero);
+            accountEarnedData[address(0)][rewarded][reward].amount += deltaAccountZero;
         }
     }
 
@@ -481,7 +494,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         uint256 currentTotalEligible,
         uint256 currentAccountBalance,
         bool forfeitRecentReward
-    ) internal view virtual returns (uint256 deltaAccountZero) {
+    ) internal view virtual returns (uint112 deltaAccountZero) {
         // If the distribution is not initialized, return.
         if (distribution.lastUpdated == 0) {
             return 0;
@@ -495,7 +508,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             uint128[EPOCHS_PER_SLOT] memory amounts;
             uint256 delta;
 
-            // Calculate the amount of tokens since last update that should be distributed.
+            // Calculate the amount of tokens since the last update that should be distributed.
             for (uint40 i = epochStart; i <= epochEnd; ++i) {
                 // Read the storage slot only every other epoch or if it's the start epoch.
                 uint256 epochIndex = _epochIndex(i);
@@ -509,22 +522,18 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             // Increase the accumulator scaled by the total eligible amount earning reward. In case nobody earns
             // rewards, accrue them to address(0). Otherwise, some portion of the rewards might get lost.
             if (currentTotalEligible == 0) {
-                deltaAccountZero += delta / SCALER;
+                deltaAccountZero = uint112(delta / SCALER);
             } else {
-                distribution.accumulator += uint160(delta / currentTotalEligible);
+                distribution.accumulator += uint144(delta / currentTotalEligible);
             }
 
             // Snapshot the timestamp.
             distribution.lastUpdated = uint40(block.timestamp);
         }
 
-        // Update account's earned amount. In case there's an overflow, accrue the excess to address(0). Otherwise, some
-        // portion of the rewards might get lost.
-        (accountEarned.amount, deltaAccountZero) = _addDeltaToCurrents(
-            accountEarned.amount,
-            deltaAccountZero,
-            uint256(distribution.accumulator - accountEarned.accumulator) * currentAccountBalance / SCALER
-        );
+        // Update account's earned amount.
+        accountEarned.amount +=
+            uint112(uint256(distribution.accumulator - accountEarned.accumulator) * currentAccountBalance / SCALER);
 
         // Snapshot new accumulator value.
         accountEarned.accumulator = distribution.accumulator;
@@ -562,9 +571,12 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
 
     /// @notice Calculates the time elapsed within a given epoch.
     /// @dev This function compares the current block timestamp with the start and end timestamps of the epoch.
-    /// If the epoch is ongoing, it calculates the time elapsed since the last update or the start of the epoch.
-    /// If the epoch has ended, it calculates the time elapsed since the last update or the entire duration of the
-    /// epoch.
+    /// @dev If the epoch is ongoing, it calculates the time elapsed since the last update or the start of the epoch,
+    /// whichever is smaller.
+    /// @dev If the epoch has ended and there was an update since its start, it calculates the time elapsed since the
+    /// last update to the end of the epoch.
+    /// @dev If the epoch has ended and there wasn't an update since its start, it returns the epoch duration.
+    /// @dev If the epoch hasn't started, then there can't be a later update yet, and we return zero.
     /// @param epoch The epoch for which to calculate the time elapsed.
     /// @param lastUpdated The timestamp of the last update.
     /// @return The time elapsed in the given epoch.
@@ -574,37 +586,22 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         uint256 endTimestamp = getEpochEndTimestamp(epoch);
 
         // Calculate the time elapsed in the given epoch.
-        if (block.timestamp >= startTimestamp && block.timestamp < endTimestamp) {
-            // If the epoch is still ongoing, calculate the time elapsed since the last update or the start
-            // of the epoch.
+        // If the epoch hasn't started yet
+        if (block.timestamp < startTimestamp) {
+            return 0;
+
+            // If the epoch is ongoing
+        } else if (block.timestamp >= startTimestamp && block.timestamp < endTimestamp) {
+            // If the last update was in or after the given epoch, return the time elapsed since the last update.
+            // Otherwise return the time elapsed from the start of the given epoch.
             return lastUpdated > startTimestamp ? block.timestamp - lastUpdated : block.timestamp - startTimestamp;
+
+            // If the epoch has ended
         } else {
-            // If the epoch has ended, calculate the time elapsed since the last update or the entire
-            // duration of the epoch.
+            // If the last update was in or after the given epoch, return the time elapsed between the last update to
+            // the end of the given epoch. If the last update was before the start of the given epoch, return the epoch
+            // duration.
             return lastUpdated > startTimestamp ? endTimestamp - lastUpdated : EPOCH_DURATION;
-        }
-    }
-
-    /// @notice Adds the given delta to the first current amount up to uint96 max value. If it exceeds, it adds it to
-    /// the second current.
-    /// @param current1 The first current amount.
-    /// @param current2 The second current amount.
-    /// @param delta The amount to add to the current amounts.
-    /// @return final1 The final amount of the first current after adding the delta.
-    /// @return final2 The total of the second current amount after adding the remaining delta.
-    function _addDeltaToCurrents(
-        uint256 current1,
-        uint256 current2,
-        uint256 delta
-    ) internal pure returns (uint96 final1, uint256 final2) {
-        current1 += delta;
-
-        if (current1 > type(uint96).max) {
-            final1 = type(uint96).max;
-            final2 = current2 + (current1 - type(uint96).max);
-        } else {
-            final1 = uint96(current1);
-            final2 = uint96(current2);
         }
     }
 }
