@@ -370,7 +370,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @return The end timestamp for the given epoch.
     function getEpochEndTimestamp(uint40 epoch) public view override returns (uint40) {
         return uint40(getEpochStartTimestamp(epoch) + EPOCH_DURATION);
-    }
+    } // Is it a problem that each epochEndTimestamp overlaps the next epochStartTimestamp?
 
     /// @notice Stores the reward token distribution amounts for a given rewarded token.
     /// @param rewarded The address of the rewarded token.
