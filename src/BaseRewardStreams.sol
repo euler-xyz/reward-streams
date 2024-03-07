@@ -569,8 +569,11 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
 
     /// @notice Calculates the time elapsed within a given epoch.
     /// @dev This function compares the current block timestamp with the start and end timestamps of the epoch.
-    /// If the epoch is ongoing, it calculates the time elapsed since the last update or the start of the epoch.
-    /// If the epoch has ended, it calculates the time elapsed since the last update or the entire duration of the
+    /// If the epoch is ongoing, it calculates the time elapsed since the last update or the start of the epoch, whichever is smaller.
+    /// If the epoch has ended and there was an update since its start, it calculates the time elapsed since the last update to the end of the epoch.
+    /// If the epoch has ended and there wasn't an update since its start, it returns the epoch duration.
+    /// If the epoch hasn't started, then there can't be a later update yet, and we return the epoch duration. Maybe we should return zero.
+    or the entire duration of the
     /// epoch.
     /// @param epoch The epoch for which to calculate the time elapsed.
     /// @param lastUpdated The timestamp of the last update.
@@ -582,12 +585,10 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
 
         // Calculate the time elapsed in the given epoch.
         if (block.timestamp >= startTimestamp && block.timestamp < endTimestamp) { // Here we act like the epochEndTimestamp doesn't belong to the epoch
-            // If the epoch is still ongoing, calculate the time elapsed since the last update or the start
-            // of the epoch.
+            // If last update was in or after the given epoch, return the time elapsed since the last update. Otherwise return the time elapsed from the start of the given epoch.
             return lastUpdated > startTimestamp ? block.timestamp - lastUpdated : block.timestamp - startTimestamp;
-        } else {
-            // If the epoch has ended, calculate the time elapsed since the last update or the entire
-            // duration of the epoch.
+        } else { // We also end here if the epoch hasn't started.
+            // If last update was in or after the given epoch, return the time elapsed between the last update to the end of the given epoch. If the last update was before the start of the given epoch, return the epoch duration.
             return lastUpdated > startTimestamp ? endTimestamp - lastUpdated : EPOCH_DURATION; // I think that here we are returning one extra second if we are in the epoch
         }
     }
