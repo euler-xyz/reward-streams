@@ -42,22 +42,22 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     error AccumulatorOverflow();
     error TooManyRewardsEnabled();
 
-    /// @notice Struct to store distribution data.
+    /// @notice Struct to store distribution data per rewarded and reward tokens.
     struct DistributionStorage {
         uint40 lastUpdated;
         uint160 accumulator;
     }
 
-    /// @notice Struct to store totals data.
+    /// @notice Struct to store totals data per rewarded and reward tokens.
     struct TotalsStorage {
-        uint256 totalEligible;
-        uint128 totalRegistered;
-        uint128 totalClaimed;
+        uint256 totalEligible; // Total rewarded token that are eligible for rewards
+        uint128 totalRegistered; // Total reward token that have been transferred into this contract for rewards
+        uint128 totalClaimed; // Total reward token that have been transferred out from this contract for rewards
     }
 
     /// @notice Struct to store earned data.
     struct EarnStorage {
-        uint96 amount;
+        uint96 amount; // Claimable amount, not total earned
         uint160 accumulator;
     }
 
@@ -117,7 +117,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             totalAmount += rewardAmounts[i];
         }
 
-        if (totalAmount == 0) {
+        if (totalAmount == 0) { // If we check this, shouldn't we check that there are rewards allocated for each epoch?
             revert InvalidAmount();
         }
 
@@ -125,7 +125,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         if (distributionData[rewarded][reward].lastUpdated == 0) {
             distributionData[rewarded][reward].lastUpdated = uint40(block.timestamp);
         } else {
-            updateReward(rewarded, reward, address(0));
+            updateReward(rewarded, reward, address(0)); // See comment below in `updateReward`. The last parameter should be removed.
         }
 
         // sanity check for overflow (assumes total eligible supply of 1 which is the worst case scenario)
@@ -155,6 +155,8 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @param recipient The address to receive the address(0) earned rewards.
     function updateReward(address rewarded, address reward, address recipient) public virtual override {
         address msgSender = _msgSender();
+
+        // If the account disables the rewards we pass an account balance of zero to not accrue any.
         uint256 currentAccountBalance =
             accountEnabledRewards[msgSender][rewarded].contains(reward) ? accountBalances[msgSender][rewarded] : 0;
 
@@ -167,7 +169,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             false
         );
 
-        claim(address(0), rewarded, reward, recipient);
+        claim(address(0), rewarded, reward, recipient); // It seems strange to add this call here. It would make more sense to add a completely separate function to claim spillover rewards.
     }
 
     /// @notice Claims earned reward.
@@ -183,6 +185,8 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         bool forfeitRecentReward
     ) external virtual override nonReentrant {
         address msgSender = _msgSender();
+
+        // If the account disables the rewards we pass an account balance of zero to not accrue any.
         uint256 currentAccountBalance =
             accountEnabledRewards[msgSender][rewarded].contains(reward) ? accountBalances[msgSender][rewarded] : 0;
 
@@ -213,6 +217,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             uint256 currentAccountBalance = accountBalances[msgSender][rewarded];
             uint256 currentTotalEligible = distributionTotals[rewarded][reward].totalEligible;
 
+            // We pass zero as `currentAccountBalance` to not distribute rewards for the period before the account enabled them
             updateData(msgSender, rewarded, reward, currentTotalEligible, 0, false);
 
             distributionTotals[rewarded][reward].totalEligible = currentTotalEligible + currentAccountBalance;
@@ -254,6 +259,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     ) external view virtual override returns (uint256) {
         EarnStorage memory accountEarned = accountEarnedData[account][rewarded][reward];
 
+        // If the account disables the rewards we pass an account balance of zero to not accrue any.
         uint256 currentAccountBalance =
             accountEnabledRewards[account][rewarded].contains(reward) ? accountBalances[account][rewarded] : 0;
 
@@ -267,6 +273,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             forfeitRecentReward
         );
 
+        // If we have spillover rewards, we add them to address(0), capping the address(0) rewards at MAXUINT96
         if (account == address(0) && deltaAccountZero != 0) {
             (accountEarned.amount,) = _addDeltaToCurrents(accountEarned.amount, 0, deltaAccountZero);
         }
@@ -458,6 +465,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         distributionData[rewarded][reward] = distribution;
         accountEarnedData[account][rewarded][reward] = accountEarned;
 
+        // If there were excess rewards, allocate them to address(0). If the rewards allocated at address(0) reach MAXUINT96, do not allocate any excess anywhere.
         if (deltaAccountZero != 0) {
             (accountEarnedData[address(0)][rewarded][reward].amount,) =
                 _addDeltaToCurrents(accountEarnedData[address(0)][rewarded][reward].amount, 0, deltaAccountZero);
@@ -518,8 +526,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             distribution.lastUpdated = uint40(block.timestamp);
         }
 
-        // Update account's earned amount. In case there's an overflow, accrue the excess to address(0). Otherwise, some
-        // portion of the rewards might get lost.
+        // Update account's earned amount. In case there's an overflow, cap the account rewards as MAXUINT96 and return the excess as `deltaAccountZero`.
         (accountEarned.amount, deltaAccountZero) = _addDeltaToCurrents(
             accountEarned.amount,
             deltaAccountZero,
