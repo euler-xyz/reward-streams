@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-pragma solidity ^0.8.23;
+pragma solidity ^0.8.24;
 
 import "./BaseRewardStreams.sol";
 import "./interfaces/IBalanceForwarder.sol";
@@ -40,7 +40,9 @@ contract StakingFreeRewardStreams is BaseRewardStreams, IStakingFreeRewardStream
             uint256 currentTotalEligible = distributionTotals[rewarded][reward].totalEligible;
 
             // We allocate rewards always before updating any balances
-            updateData(account, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward); // Note that here `updateData` is misleading, because you would expect it to update everything)
+            updateRewardInternal(
+                account, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward
+            );
 
             distributionTotals[rewarded][reward].totalEligible =
                 currentTotalEligible - currentAccountBalance + newAccountBalance;

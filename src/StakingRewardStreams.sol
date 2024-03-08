@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-pragma solidity ^0.8.23;
+pragma solidity ^0.8.24;
 
 import "./BaseRewardStreams.sol";
 
@@ -46,7 +46,7 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
             uint256 currentTotalEligible = distributionTotals[rewarded][reward].totalEligible;
 
             // We allocate rewards always before updating any balances
-            updateData(msgSender, rewarded, reward, currentTotalEligible, currentAccountBalance, false);
+            updateRewardInternal(msgSender, rewarded, reward, currentTotalEligible, currentAccountBalance, false);
 
             distributionTotals[rewarded][reward].totalEligible = currentTotalEligible + amount;
         }
@@ -88,7 +88,9 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
             uint256 currentTotalEligible = distributionTotals[rewarded][reward].totalEligible;
 
             // We allocate rewards always before updating any balances
-            updateData(msgSender, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward);
+            updateRewardInternal(
+                msgSender, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward
+            );
 
             distributionTotals[rewarded][reward].totalEligible = currentTotalEligible - amount;
         }
