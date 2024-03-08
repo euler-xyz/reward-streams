@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-pragma solidity ^0.8.23;
+pragma solidity ^0.8.24;
 
 import "./IBalanceTracker.sol";
 
@@ -9,8 +9,9 @@ import "./IBalanceTracker.sol";
 /// @notice Interface for Reward Streams distributor contract
 interface IRewardStreams {
     function registerReward(address rewarded, address reward, uint40 startEpoch, uint128[] calldata rewardAmounts) external;
-    function updateReward(address rewarded, address reward, address recipient) external;
+    function updateReward(address rewarded, address reward) external;
     function claimReward(address rewarded, address reward, address recipient, bool forfeitRecentReward) external;
+    function claimSpilloverReward(address rewarded, address reward, address recipient) external;
     function enableReward(address rewarded, address reward) external;
     function disableReward(address rewarded, address reward, bool forfeitRecentReward) external;
     function earnedReward(address account, address rewarded, address reward, bool forfeitRecentReward) external view returns (uint256);
