@@ -457,7 +457,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @param currentTotalEligible The current total amount of rewarded token eligible to get the reward token.
     /// @param currentAccountBalance The current rewarded token balance of the account.
     /// @param forfeitRecentReward Whether to forfeit the recent rewards and not update the accumulator.
-    function updateData(
+    function updateData( // Maybe this should be `updateRewardsInternal` to make it clear that it doesn't update eligible or balances
         address account,
         address rewarded,
         address reward,
@@ -496,7 +496,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @param currentAccountBalance The current rewarded token balance of the account.
     /// @param forfeitRecentReward Whether to forfeit the recent rewards and not update the accumulator.
     /// @return deltaAccountZero Amount to be credited to address(0) in case rewards were to be lost.
-    function getUpdatedData(
+    function getUpdatedData( // Maybe this one should be `calculateRewards`
         DistributionStorage memory distribution,
         EarnStorage memory accountEarned,
         address rewarded,

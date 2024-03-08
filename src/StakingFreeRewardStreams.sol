@@ -43,8 +43,10 @@ contract StakingFreeRewardStreams is BaseRewardStreams, IStakingFreeRewardStream
 
             distributionTotals[rewarded][reward].totalEligible =
                 currentTotalEligible - currentAccountBalance + newAccountBalance;
+            // It is a bit weird that `updateData` doesn't update `totalEligible`
         }
 
         accountBalances[account][rewarded] = newAccountBalance;
+        // It is a bit weird as well that `updateData` doesn't update `accountBalances[account][rewarded]`.
     }
 }
