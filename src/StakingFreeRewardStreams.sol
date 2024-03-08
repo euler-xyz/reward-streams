@@ -39,14 +39,13 @@ contract StakingFreeRewardStreams is BaseRewardStreams, IStakingFreeRewardStream
             address reward = rewardsArray[i];
             uint256 currentTotalEligible = distributionTotals[rewarded][reward].totalEligible;
 
-            updateData(account, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward);
+            // We allocate rewards always before updating any balances
+            updateData(account, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward); // Note that here `updateData` is misleading, because you would expect it to update everything)
 
             distributionTotals[rewarded][reward].totalEligible =
                 currentTotalEligible - currentAccountBalance + newAccountBalance;
-            // It is a bit weird that `updateData` doesn't update `totalEligible`
         }
 
         accountBalances[account][rewarded] = newAccountBalance;
-        // It is a bit weird as well that `updateData` doesn't update `accountBalances[account][rewarded]`.
     }
 }
