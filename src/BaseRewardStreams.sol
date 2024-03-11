@@ -44,7 +44,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
 
     /// @notice Struct to store distribution data per rewarded and reward tokens.
     struct DistributionStorage {
-        uint40 lastUpdated;
+        uint48 lastUpdated;
         uint144 accumulator;
     }
 
@@ -80,7 +80,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @notice Constructor for the BaseRewardStreams contract.
     /// @param _evc The Ethereum Vault Connector contract.
     /// @param _epochDuration The duration of an epoch.
-    constructor(IEVC _evc, uint40 _epochDuration) EVCUtil(_evc) {
+    constructor(IEVC _evc, uint48 _epochDuration) EVCUtil(_evc) {
         if (_epochDuration < 7 days) {
             revert InvalidEpoch();
         }
@@ -96,10 +96,10 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     function registerReward(
         address rewarded,
         address reward,
-        uint40 startEpoch,
+        uint48 startEpoch,
         uint128[] calldata rewardAmounts
     ) external virtual override nonReentrant {
-        uint40 epoch = currentEpoch();
+        uint48 epoch = currentEpoch();
 
         // if start epoch is 0, set it to the next epoch
         if (startEpoch == 0) {
@@ -128,7 +128,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
 
         // initialize or update the data
         if (distributionData[rewarded][reward].lastUpdated == 0) {
-            distributionData[rewarded][reward].lastUpdated = uint40(block.timestamp);
+            distributionData[rewarded][reward].lastUpdated = uint48(block.timestamp);
         } else {
             updateReward(rewarded, reward);
         }
@@ -334,7 +334,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     function rewardAmount(
         address rewarded,
         address reward,
-        uint40 epoch
+        uint48 epoch
     ) public view virtual override returns (uint256) {
         return distributionAmounts[rewarded][reward][_storageIndex(epoch)][_epochIndex(epoch)];
     }
@@ -365,30 +365,30 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
 
     /// @notice Returns the current epoch based on the block timestamp.
     /// @return The current epoch.
-    function currentEpoch() public view override returns (uint40) {
-        return getEpoch(uint40(block.timestamp));
+    function currentEpoch() public view override returns (uint48) {
+        return getEpoch(uint48(block.timestamp));
     }
 
     /// @notice Returns the epoch for a given timestamp.
     /// @param timestamp The timestamp to get the epoch for.
     /// @return The epoch for the given timestamp.
-    function getEpoch(uint40 timestamp) public view override returns (uint40) {
-        return uint40(timestamp / EPOCH_DURATION);
+    function getEpoch(uint48 timestamp) public view override returns (uint48) {
+        return uint48(timestamp / EPOCH_DURATION);
     }
 
     /// @notice Returns the start timestamp for a given epoch.
     /// @param epoch The epoch to get the start timestamp for.
     /// @return The start timestamp for the given epoch.
-    function getEpochStartTimestamp(uint40 epoch) public view override returns (uint40) {
-        return uint40(epoch * EPOCH_DURATION);
+    function getEpochStartTimestamp(uint48 epoch) public view override returns (uint48) {
+        return uint48(epoch * EPOCH_DURATION);
     }
 
     /// @notice Returns the end timestamp for a given epoch.
     /// @dev The end timestamp is just after its epoch, and is the same as the start timestamp from the next epoch.
     /// @param epoch The epoch to get the end timestamp for.
     /// @return The end timestamp for the given epoch.
-    function getEpochEndTimestamp(uint40 epoch) public view override returns (uint40) {
-        return uint40(getEpochStartTimestamp(epoch) + EPOCH_DURATION);
+    function getEpochEndTimestamp(uint48 epoch) public view override returns (uint48) {
+        return uint48(getEpochStartTimestamp(epoch) + EPOCH_DURATION);
     }
 
     /// @notice Stores the reward token distribution amounts for a given rewarded token.
@@ -399,7 +399,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     function storeAmounts(
         address rewarded,
         address reward,
-        uint40 startEpoch,
+        uint48 startEpoch,
         uint128[] memory amountsToBeStored
     ) internal virtual {
         uint256 length = amountsToBeStored.length;
@@ -518,14 +518,14 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
 
         if (!forfeitRecentReward) {
             // Get the start and end epochs based on the last updated timestamp of the distribution.
-            uint40 lastUpdated = distribution.lastUpdated;
-            uint40 epochStart = getEpoch(lastUpdated);
-            uint40 epochEnd = currentEpoch();
+            uint48 lastUpdated = distribution.lastUpdated;
+            uint48 epochStart = getEpoch(lastUpdated);
+            uint48 epochEnd = currentEpoch();
             uint128[EPOCHS_PER_SLOT] memory amounts;
             uint256 delta;
 
             // Calculate the amount of tokens since the last update that should be distributed.
-            for (uint40 i = epochStart; i <= epochEnd; ++i) {
+            for (uint48 i = epochStart; i <= epochEnd; ++i) {
                 // Read the storage slot only every other epoch or if it's the start epoch.
                 uint256 epochIndex = _epochIndex(i);
                 if (epochIndex == 0 || i == epochStart) {
@@ -548,7 +548,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             }
 
             // Snapshot the timestamp.
-            distribution.lastUpdated = uint40(block.timestamp);
+            distribution.lastUpdated = uint48(block.timestamp);
         }
 
         // Update account's earned amount.
@@ -602,7 +602,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @param epoch The epoch for which to calculate the time elapsed.
     /// @param lastUpdated The timestamp of the last update.
     /// @return The time elapsed in the given epoch.
-    function _timeElapsedInEpoch(uint40 epoch, uint40 lastUpdated) internal view returns (uint256) {
+    function _timeElapsedInEpoch(uint48 epoch, uint48 lastUpdated) internal view returns (uint256) {
         // Get the start and end timestamps for the given epoch.
         uint256 startTimestamp = getEpochStartTimestamp(epoch);
         uint256 endTimestamp = getEpochEndTimestamp(epoch);

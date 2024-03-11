@@ -39,16 +39,16 @@ contract ViewTest is Test {
     function test_RewardAmountCurrent(
         address rewarded,
         address reward,
-        uint40 blockTimestamp,
+        uint48 blockTimestamp,
         uint128 amount
     ) external {
-        uint40 epoch = distributor.getEpoch(blockTimestamp);
+        uint48 epoch = distributor.getEpoch(blockTimestamp);
         distributor.setDistributionAmount(rewarded, reward, epoch, amount);
         vm.warp(blockTimestamp);
         assertEq(distributor.rewardAmount(rewarded, reward), amount);
     }
 
-    function test_RewardAmount(address rewarded, address reward, uint40 epoch, uint128 amount) external {
+    function test_RewardAmount(address rewarded, address reward, uint48 epoch, uint128 amount) external {
         distributor.setDistributionAmount(rewarded, reward, epoch, amount);
         assertEq(distributor.rewardAmount(rewarded, reward, epoch), amount);
     }
@@ -77,8 +77,8 @@ contract ViewTest is Test {
         assertEq(distributor.totalRewardClaimed(rewarded, reward), totals.totalClaimed);
     }
 
-    function test_Epoch(uint40 timestamp) external {
-        vm.assume(timestamp < type(uint40).max - distributor.EPOCH_DURATION());
+    function test_Epoch(uint48 timestamp) external {
+        vm.assume(timestamp < type(uint48).max - distributor.EPOCH_DURATION());
         vm.warp(timestamp);
 
         assertEq(distributor.getEpoch(timestamp), distributor.currentEpoch());

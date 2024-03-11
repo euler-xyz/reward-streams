@@ -20,7 +20,7 @@ contract StakingFreeRewardStreams is BaseRewardStreams, IStakingFreeRewardStream
     /// @notice Constructor for the StakingFreeRewardStreams contract.
     /// @param evc The Ethereum Vault Connector contract.
     /// @param epochDuration The duration of an epoch.
-    constructor(IEVC evc, uint40 epochDuration) BaseRewardStreams(evc, epochDuration) {}
+    constructor(IEVC evc, uint48 epochDuration) BaseRewardStreams(evc, epochDuration) {}
 
     /// @notice Executes the balance tracking hook for an account
     /// @param account The account address to execute the hook for

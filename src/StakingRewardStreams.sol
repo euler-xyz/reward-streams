@@ -21,7 +21,7 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
     /// @notice Constructor for the StakingRewardStreams contract.
     /// @param evc The Ethereum Vault Connector contract.
     /// @param periodDuration The duration of a period.
-    constructor(IEVC evc, uint40 periodDuration) BaseRewardStreams(evc, periodDuration) {}
+    constructor(IEVC evc, uint48 periodDuration) BaseRewardStreams(evc, periodDuration) {}
 
     /// @notice Allows a user to stake rewarded tokens.
     /// @dev If the amount is max, the entire balance of the user is staked.

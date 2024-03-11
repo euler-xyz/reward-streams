@@ -39,7 +39,7 @@ contract RegisterRewardTest is Test {
     function updateDistributionAmounts(
         address _rewarded,
         address _reward,
-        uint40 _startEpoch,
+        uint48 _startEpoch,
         uint128[] memory _amounts
     ) internal {
         for (uint256 i; i < _amounts.length; ++i) {
@@ -47,7 +47,7 @@ contract RegisterRewardTest is Test {
         }
     }
 
-    function test_RevertIfInvalidEpochDuration_Constructor(uint40 epochDuration) external {
+    function test_RevertIfInvalidEpochDuration_Constructor(uint48 epochDuration) external {
         if (epochDuration < 7 days) {
             vm.expectRevert(BaseRewardStreams.InvalidEpoch.selector);
         }
@@ -56,16 +56,16 @@ contract RegisterRewardTest is Test {
     }
 
     function test_RegisterReward(
-        uint40 epochDuration,
-        uint40 blockTimestamp,
-        uint40 startEpoch,
+        uint48 epochDuration,
+        uint48 blockTimestamp,
+        uint48 startEpoch,
         uint8 amountsLength0,
         uint8 amountsLength1,
         uint8 amountsLength2,
         bytes memory seed
     ) external {
-        epochDuration = uint40(bound(epochDuration, 7 days, 365 days));
-        blockTimestamp = uint40(bound(blockTimestamp, 1, type(uint40).max - 50 * epochDuration));
+        epochDuration = uint48(bound(epochDuration, 7 days, 365 days));
+        blockTimestamp = uint48(bound(blockTimestamp, 1, type(uint48).max - 50 * epochDuration));
         amountsLength0 = uint8(bound(amountsLength0, 1, 25));
         amountsLength1 = uint8(bound(amountsLength1, 1, 25));
         amountsLength2 = uint8(bound(amountsLength2, 1, 25));
@@ -78,7 +78,7 @@ contract RegisterRewardTest is Test {
 
         // ------------------ 1st call ------------------
         // prepare the start epoch
-        startEpoch = uint40(
+        startEpoch = uint48(
             bound(
                 startEpoch, distributor.currentEpoch() + 1, distributor.currentEpoch() + distributor.MAX_EPOCHS_AHEAD()
             )
@@ -102,7 +102,7 @@ contract RegisterRewardTest is Test {
         // verify that the distribution and totals storage were properly initialized
         assertEq(
             abi.encode(distributor.getDistributionData(rewarded, reward)),
-            abi.encode(BaseRewardStreams.DistributionStorage({lastUpdated: uint40(block.timestamp), accumulator: 0}))
+            abi.encode(BaseRewardStreams.DistributionStorage({lastUpdated: uint48(block.timestamp), accumulator: 0}))
         );
         assertEq(
             abi.encode(distributor.getDistributionTotals(rewarded, reward)),
@@ -114,7 +114,7 @@ contract RegisterRewardTest is Test {
         // verify that the distribution amounts storage was properly updated
         updateDistributionAmounts(rewarded, reward, startEpoch, amounts);
 
-        for (uint40 i; i <= distributor.MAX_EPOCHS_AHEAD(); ++i) {
+        for (uint48 i; i <= distributor.MAX_EPOCHS_AHEAD(); ++i) {
             assertEq(
                 distributor.rewardAmount(rewarded, reward, startEpoch + i),
                 distributionAmounts[rewarded][reward][startEpoch + i]
@@ -145,7 +145,7 @@ contract RegisterRewardTest is Test {
         // verify that the totals storage was properly updated (no time elapsed)
         assertEq(
             abi.encode(distributor.getDistributionData(rewarded, reward)),
-            abi.encode(BaseRewardStreams.DistributionStorage({lastUpdated: uint40(block.timestamp), accumulator: 0}))
+            abi.encode(BaseRewardStreams.DistributionStorage({lastUpdated: uint48(block.timestamp), accumulator: 0}))
         );
         assertEq(
             abi.encode(distributor.getDistributionTotals(rewarded, reward)),
@@ -162,7 +162,7 @@ contract RegisterRewardTest is Test {
         startEpoch = distributor.currentEpoch() + 1;
         updateDistributionAmounts(rewarded, reward, startEpoch, amounts);
 
-        for (uint40 i; i <= distributor.MAX_EPOCHS_AHEAD(); ++i) {
+        for (uint48 i; i <= distributor.MAX_EPOCHS_AHEAD(); ++i) {
             assertEq(
                 distributor.rewardAmount(rewarded, reward, startEpoch + i),
                 distributionAmounts[rewarded][reward][startEpoch + i]
@@ -174,7 +174,7 @@ contract RegisterRewardTest is Test {
         vm.warp(blockTimestamp + epochDuration * amountsLength0 + amountsLength1 + amountsLength2);
 
         // prepare the start epoch
-        startEpoch = uint40(
+        startEpoch = uint48(
             bound(
                 startEpoch, distributor.currentEpoch() + 1, distributor.currentEpoch() + distributor.MAX_EPOCHS_AHEAD()
             )
@@ -200,7 +200,7 @@ contract RegisterRewardTest is Test {
         // verify that the totals storage was properly updated (considering that some has time elapsed)
         assertEq(
             abi.encode(distributor.getDistributionData(rewarded, reward)),
-            abi.encode(BaseRewardStreams.DistributionStorage({lastUpdated: uint40(block.timestamp), accumulator: 0}))
+            abi.encode(BaseRewardStreams.DistributionStorage({lastUpdated: uint48(block.timestamp), accumulator: 0}))
         );
         assertEq(
             abi.encode(distributor.getDistributionTotals(rewarded, reward)),
@@ -216,7 +216,7 @@ contract RegisterRewardTest is Test {
         // verify that the distribution amounts storage was properly updated
         updateDistributionAmounts(rewarded, reward, startEpoch, amounts);
 
-        for (uint40 i; i <= distributor.MAX_EPOCHS_AHEAD(); ++i) {
+        for (uint48 i; i <= distributor.MAX_EPOCHS_AHEAD(); ++i) {
             assertEq(
                 distributor.rewardAmount(rewarded, reward, startEpoch + i),
                 distributionAmounts[rewarded][reward][startEpoch + i]
@@ -224,10 +224,10 @@ contract RegisterRewardTest is Test {
         }
     }
 
-    function test_RevertIfInvalidEpoch_RegisterReward(uint40 blockTimestamp) external {
+    function test_RevertIfInvalidEpoch_RegisterReward(uint48 blockTimestamp) external {
         vm.assume(
             blockTimestamp > distributor.EPOCH_DURATION()
-                && blockTimestamp < type(uint40).max - distributor.EPOCH_DURATION()
+                && blockTimestamp < type(uint48).max - distributor.EPOCH_DURATION()
         );
         vm.warp(blockTimestamp);
 
@@ -235,13 +235,13 @@ contract RegisterRewardTest is Test {
         amounts[0] = 1;
 
         vm.startPrank(seeder);
-        uint40 startEpoch = distributor.currentEpoch();
+        uint48 startEpoch = distributor.currentEpoch();
         vm.expectRevert(BaseRewardStreams.InvalidEpoch.selector);
         distributor.registerReward(rewarded, reward, startEpoch, amounts);
         vm.stopPrank();
 
         vm.startPrank(seeder);
-        startEpoch = uint40(distributor.currentEpoch() + distributor.MAX_EPOCHS_AHEAD() + 1);
+        startEpoch = uint48(distributor.currentEpoch() + distributor.MAX_EPOCHS_AHEAD() + 1);
         vm.expectRevert(BaseRewardStreams.InvalidEpoch.selector);
         distributor.registerReward(rewarded, reward, startEpoch, amounts);
         vm.stopPrank();
@@ -258,7 +258,7 @@ contract RegisterRewardTest is Test {
         vm.stopPrank();
 
         vm.startPrank(seeder);
-        startEpoch = uint40(distributor.currentEpoch() + distributor.MAX_EPOCHS_AHEAD());
+        startEpoch = uint48(distributor.currentEpoch() + distributor.MAX_EPOCHS_AHEAD());
         distributor.registerReward(rewarded, reward, startEpoch, amounts);
         vm.stopPrank();
     }
@@ -295,7 +295,7 @@ contract RegisterRewardTest is Test {
 
         // initialize the distribution data and set the total registered amount to the max value
         BaseRewardStreams.DistributionStorage memory distribution =
-            BaseRewardStreams.DistributionStorage({lastUpdated: uint40(1), accumulator: 0});
+            BaseRewardStreams.DistributionStorage({lastUpdated: uint48(1), accumulator: 0});
         BaseRewardStreams.TotalsStorage memory totals = BaseRewardStreams.TotalsStorage({
             totalRegistered: uint128(type(uint144).max / 1e12),
             totalClaimed: 0,
