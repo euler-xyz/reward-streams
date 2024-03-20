@@ -6,8 +6,8 @@ import "forge-std/Test.sol";
 import "evc/EthereumVaultConnector.sol";
 import "../harness/StakingRewardStreamsHarness.sol";
 import "../harness/StakingFreeRewardStreamsHarness.sol";
-import "../utils/MockERC20.sol";
-import "../utils/MockController.sol";
+import {MockERC20, MockERC20BalanceForwarder} from "../utils/MockERC20.sol";
+import {MockController} from "../utils/MockController.sol";
 
 contract ScenarioTest is Test {
     EthereumVaultConnector internal evc;

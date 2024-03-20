@@ -5,8 +5,8 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import "evc/EthereumVaultConnector.sol";
 import "../harness/BaseRewardStreamsHarness.sol";
-import "../utils/MockERC20.sol";
-import "../utils/MockController.sol";
+import {MockERC20} from "../utils/MockERC20.sol";
+import {MockController} from "../utils/MockController.sol";
 
 contract ViewTest is Test {
     EthereumVaultConnector internal evc;

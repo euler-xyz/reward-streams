@@ -6,7 +6,7 @@ solc = "0.8.24"
 optimizer_runs = 100000
 remappings = [
     "forge-std/=lib/forge-std/src/",
-    "openzeppelin/=lib/openzeppelin-contracts/contracts",
+    "openzeppelin-contracts/=lib/openzeppelin-contracts/contracts",
     "evc/=lib/ethereum-vault-connector/src"
 ]
 

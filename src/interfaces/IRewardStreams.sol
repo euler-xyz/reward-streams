@@ -26,6 +26,7 @@ interface IRewardStreams {
     function getEpoch(uint48 timestamp) external view returns (uint48);
     function getEpochStartTimestamp(uint48 epoch) external view returns (uint48);
     function getEpochEndTimestamp(uint48 epoch) external view returns (uint48);
+    function EPOCH_DURATION() external view returns (uint256);
 }
 
 /// @title IStakingFreeRewardStreams
