@@ -71,16 +71,16 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
         bool forfeitRecentReward
     ) external virtual override nonReentrant {
         address msgSender = _msgSender();
+        uint256 currentAccountBalance = accountBalances[msgSender][rewarded];
 
         if (amount == type(uint256).max) {
-            amount = accountBalances[msgSender][rewarded];
+            amount = currentAccountBalance;
         }
 
-        if (amount == 0) {
+        if (amount == 0 || amount > currentAccountBalance) {
             revert InvalidAmount();
         }
 
-        uint256 currentAccountBalance = accountBalances[msgSender][rewarded];
         address[] memory rewardsArray = accountEnabledRewards[msgSender][rewarded].get();
 
         for (uint256 i; i < rewardsArray.length; ++i) {

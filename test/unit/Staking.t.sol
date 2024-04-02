@@ -54,6 +54,10 @@ contract StakingTest is Test {
         vm.expectRevert(BaseRewardStreams.InvalidAmount.selector);
         distributor.unstake(rewarded, 0, participant, false);
 
+        // unstake greater than staked amount
+        vm.expectRevert(BaseRewardStreams.InvalidAmount.selector);
+        distributor.unstake(rewarded, uint256(amount) + 1, participant, false);
+
         // unstake
         uint256 preBalanceRecipient = MockERC20(rewarded).balanceOf(recipient);
         preBalanceDistributor = MockERC20(rewarded).balanceOf(address(distributor));

@@ -21,6 +21,10 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     uint256 public constant MAX_DISTRIBUTION_LENGTH = 25;
     uint256 public constant MAX_REWARDS_ENABLED = 5;
     uint256 internal constant EPOCHS_PER_SLOT = 2;
+
+    // this value is used to increase the precision of the calculations due to the fact that distributed amount of
+    // rewards must be divided by the total eligible amount. 1e12 value is carefully chosen to allow big enough
+    // total registered amount, per rewarded and reward token pair, while not allowing the accumulator to overflow.
     uint256 internal constant SCALER = 1e12;
 
     /// @notice Event emitted when a reward scheme is registered.
@@ -111,8 +115,8 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             revert InvalidEpoch();
         }
 
-        // distribution scheme should be at least 1 and at most MAX_DISTRIBUTION_LENGTH epochs long
-        if (rewardAmounts.length == 0 || rewardAmounts.length > MAX_DISTRIBUTION_LENGTH) {
+        // distribution scheme should be at most MAX_DISTRIBUTION_LENGTH epochs long
+        if (rewardAmounts.length > MAX_DISTRIBUTION_LENGTH) {
             revert InvalidAmount();
         }
 
@@ -449,10 +453,11 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             TotalsStorage storage totalsStorage = distributionTotals[rewarded][reward];
             uint128 totalRegistered = totalsStorage.totalRegistered;
             uint128 totalClaimed = totalsStorage.totalClaimed;
+            uint128 newTotalClaimed = totalClaimed + amount;
 
-            assert(totalRegistered >= totalClaimed + amount);
+            assert(totalRegistered >= newTotalClaimed);
 
-            totalsStorage.totalClaimed = totalClaimed + amount;
+            totalsStorage.totalClaimed = newTotalClaimed;
             earnStorage.claimable = 0;
 
             IERC20(reward).safeTransfer(recipient, amount);
