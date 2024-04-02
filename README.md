@@ -1,6 +1,6 @@
 # Reward Streams - Efficient and Flexible Reward Distribution
 
-Reward Streams is a powerful and flexible implementation of the billion-dollar algorithm, a popular method for proportional reward distribution in the Ethereum developer community. This project extends the algorithm's functionality to support both staking and staking-free reward distribution, multiple reward tokens, and permissionless registration of reward distribution schemes. This makes Reward Streams a versatile tool for incentivizing token staking and holding in a variety of use cases.
+Reward Streams is a powerful and flexible implementation of the billion-dollar algorithm, a popular method for proportional reward distribution in the Ethereum developer community. This project extends the algorithm's functionality to support both staking and staking-free (based on balance changes tracking) reward distribution, multiple reward tokens, and permissionless registration of reward distribution schemes. This makes Reward Streams a versatile tool for incentivizing token staking and holding in a variety of use cases.
 
 ---
 
@@ -13,8 +13,8 @@ Reward Streams is a powerful and flexible implementation of the billion-dollar a
 │   ├── IBalanceTracker.sol
 │   └── IRewardStreams.sol
 ├── BaseRewardStreams.sol
-├── StakingFreeRewardStreams.sol
-└── StakingRewardStreams.sol
+├── StakingRewardStreams.sol
+└── TrackingRewardStreams.sol
 ```
 
 ## The billion-dollar algorithm
@@ -27,12 +27,12 @@ Today, the algorithm is used by many projects in the Ethereum ecosystem. For exa
 
 ## Motivation
 
-The billion-dollar algorithm has been a game-changer for reward distribution in the Ethereum ecosystem. However, existing implementations have limitations that can hinder their flexibility and utility. For instance, most implementations do not support staking-free reward distribution and join multiple farms that provide rewards for the same token.
+The billion-dollar algorithm has been a game-changer for reward distribution in the Ethereum ecosystem. However, existing implementations have limitations that can hinder their flexibility and utility. For instance, most implementations do not support reward distribution based on balance changes tracking and do not allow to join multiple farms that provide rewards for the same token.
 
 Reward Streams was developed to address these limitations and provide a more flexible and powerful implementation of the billion-dollar algorithm. Here's what Reward Streams offers:
 
-1. A common base contract (`BaseRewardStreams`) that is reused by both staking and staking-free mechanisms of rewards distribution.
-2. An easy-to-use mechanism for staking-free reward distribution, which requires only a subtle change to the ERC-20 token contract.
+1. A common base contract (`BaseRewardStreams`) that is reused by both staking and balance-tracking mechanisms of rewards distribution.
+2. An easy-to-use mechanism for balance-tracking reward distribution, which requires only a subtle change to the ERC-20 token contract.
 3. A permissionless mechanism to create a reward distribution scheme, enabling anyone to incentivize staking/holding of any token with any reward.
 4. The ability for users to earn up to 5 different reward tokens simultaneously for staking/holding of a single rewarded token.
 5. Additive, fixed length epoch-based distribution of rewards where the reward rate may differ from epoch to epoch.
@@ -41,11 +41,11 @@ Reward Streams was developed to address these limitations and provide a more fle
 
 ## How does it work?
 
-Reward Streams operates in two modes of rewards distribution: staking and staking-free. Each mode has a separate contract implementation.
+Reward Streams operates in two modes of rewards distribution: staking and balance-tracking. Each mode has a separate contract implementation.
 
-### Staking-Free Reward Distribution
+### Tracking Reward Distribution
 
-The staking-free `StakingFreeRewardStreams` implementation inherits from the `BaseRewardStreams` contract. It defines the `IBalanceTracker.balanceTrackerHook` function, which is required to be called on every transfer of the rewarded token if a user opted in for the hook to be called. 
+The balance-tracking `TrackingRewardStreams` implementation inherits from the `BaseRewardStreams` contract. It defines the `IBalanceTracker.balanceTrackerHook` function, which is required to be called on every transfer of the rewarded token if a user opted in for the hook to be called. 
 
 In this mode, the rewarded token contract not only calls the `balanceTrackerHook` function whenever a given account balance changes, but also implements the `IBalanceForwarder` interface. This interface defines two functions: `enableBalanceForwarding` and `disableBalanceForwarding`, which are used to opt in and out of the hook being called.
 
@@ -100,7 +100,7 @@ Given this, Alice decides to enable only the `GHI` reward and keep the `DEF` rew
 
 Multiple functions of the distributors contain an additional boolean parameter called `forfeitRecentReward`. It allows a user to optimize gas consumption in case it is not worth to iterate over multiple distribution epochs and updating contract storage. It also allows for "emergency exit" for operations like disabling reward and claiming, and DOS protection (i.e. in liquidation flows).
 
-As previously explained, rewards distributions are epoch-based. Thanks to that, each epoch may have a different reward rate, but also it is possible for the distribution schemes to be registered permissionlessly in additive manner. However, the downside of this approach is the fact that whenever a user stakes or unstakes (or, for staking-free version of the distributor, transfers/mints/burns the rewarded token), the distributor contract needs to iterate over all the epochs since the last time given distribution, defined by `rewarded` and `reward` token, was updated. Moreover, a user may be earning multiple rewards for a single rewarded token, so the distributor contract needs to iterate over all the epochs since the last update for all the rewards the user is earning. If updates happen rarely (i.e. due to low staking/unstaking activity of the `rewarded` token for a given `reward`), the gas cost associated with iterating may be significant, affecting user's profitability. Hence, when disabling or claiming reward, if the user wants to skip the epochs iteration, they can call the relevant function with `forfeitRecentReward` set to `true`. This will grant the rewards earned since the last distribution update, which would normally be earned by the user, to the rest of the distribution participants, lowering the gas cost for the user.
+As previously explained, rewards distributions are epoch-based. Thanks to that, each epoch may have a different reward rate, but also it is possible for the distribution schemes to be registered permissionlessly in additive manner. However, the downside of this approach is the fact that whenever a user stakes or unstakes (or, for balance-tracking version of the distributor, transfers/mints/burns the rewarded token), the distributor contract needs to iterate over all the epochs since the last time given distribution, defined by `rewarded` and `reward` token, was updated. Moreover, a user may be earning multiple rewards for a single rewarded token, so the distributor contract needs to iterate over all the epochs since the last update for all the rewards the user is earning. If updates happen rarely (i.e. due to low staking/unstaking activity of the `rewarded` token for a given `reward`), the gas cost associated with iterating may be significant, affecting user's profitability. Hence, when disabling or claiming reward, if the user wants to skip the epochs iteration, they can call the relevant function with `forfeitRecentReward` set to `true`. This will grant the rewards earned since the last distribution update, which would normally be earned by the user, to the rest of the distribution participants, lowering the gas cost for the user.
 
 `forfeitRecentReward` parameter may also come handy for the rewarded token contract which calls `balanceTrackerHook` on the balance changes. In case of i.e. liquidation, where user may have incentive to perform DOS attack and increase gas cost of the token transfer by enabling multiple rewards for distributions of low activity, the rewarded token contract may call `balanceTrackerHook` with `forfeitRecentReward` set to `true` to lower the gas cost of the transfer. Unfortunately, this may lead to the user losing part of their rewards.
 

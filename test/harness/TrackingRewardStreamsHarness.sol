@@ -2,13 +2,13 @@
 
 pragma solidity ^0.8.24;
 
-import "../../src/StakingFreeRewardStreams.sol";
+import "../../src/TrackingRewardStreams.sol";
 
-contract StakingFreeRewardStreamsHarness is StakingFreeRewardStreams {
+contract TrackingRewardStreamsHarness is TrackingRewardStreams {
     using SafeERC20 for IERC20;
     using Set for SetStorage;
 
-    constructor(IEVC evc, uint48 epochDuration) StakingFreeRewardStreams(evc, epochDuration) {}
+    constructor(IEVC evc, uint48 epochDuration) TrackingRewardStreams(evc, epochDuration) {}
 
     function setDistributionAmount(address rewarded, address reward, uint48 epoch, uint128 amount) external {
         distributionAmounts[rewarded][reward][_storageIndex(epoch)][_epochIndex(epoch)] = amount;

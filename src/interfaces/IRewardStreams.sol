@@ -29,10 +29,10 @@ interface IRewardStreams {
     function EPOCH_DURATION() external view returns (uint256);
 }
 
-/// @title IStakingFreeRewardStreams
+/// @title ITrackingRewardStreams
 /// @author Euler Labs (https://www.eulerlabs.com/)
-/// @notice Interface for Staking Free Reward Streams, extends IRewardStreams and IBalanceTracker
-interface IStakingFreeRewardStreams is IRewardStreams, IBalanceTracker {}
+/// @notice Interface for Tracking Reward Streams, extends IRewardStreams and IBalanceTracker
+interface ITrackingRewardStreams is IRewardStreams, IBalanceTracker {}
 
 /// @title IStakingRewardStreams
 /// @author Euler Labs (https://www.eulerlabs.com/)

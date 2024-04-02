@@ -5,19 +5,19 @@ pragma solidity ^0.8.24;
 import "./BaseRewardStreams.sol";
 import "./interfaces/IBalanceForwarder.sol";
 
-/// @title StakingFreeRewardStreams
+/// @title TrackingRewardStreams
 /// @author Euler Labs (https://www.eulerlabs.com/)
-/// @notice This contract inherits from BaseRewardStreams and implements IStakingFreeRewardStreams interface. It
+/// @notice This contract inherits from BaseRewardStreams and implements ITrackingRewardStreams interface. It
 /// allows for the rewards to be distributed to the rewarded token holders without a need to stake the shares. The
 /// rewarded token contract must be compatible with the Balance Forwarder interface and the balanceTrackerHook function.
 /// The balanceTrackerHook must be called with:
 /// - the account's new balance when account's balance changes
 /// - the current account's balance when the balance forwarding is enabled
 /// - the account's balance of 0 when the balance forwarding is disabled
-contract StakingFreeRewardStreams is BaseRewardStreams, IStakingFreeRewardStreams {
+contract TrackingRewardStreams is BaseRewardStreams, ITrackingRewardStreams {
     using Set for SetStorage;
 
-    /// @notice Constructor for the StakingFreeRewardStreams contract.
+    /// @notice Constructor for the TrackingRewardStreams contract.
     /// @param evc The Ethereum Vault Connector contract.
     /// @param epochDuration The duration of an epoch.
     constructor(IEVC evc, uint48 epochDuration) BaseRewardStreams(evc, epochDuration) {}
