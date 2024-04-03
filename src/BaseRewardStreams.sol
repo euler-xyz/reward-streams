@@ -453,11 +453,11 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             TotalsStorage storage totalsStorage = distributionTotals[rewarded][reward];
             uint128 totalRegistered = totalsStorage.totalRegistered;
             uint128 totalClaimed = totalsStorage.totalClaimed;
-            uint128 newTotalClaimed = totalClaimed + amount;
+            uint256 newTotalClaimed = totalClaimed + amount;
 
             assert(totalRegistered >= newTotalClaimed);
 
-            totalsStorage.totalClaimed = newTotalClaimed;
+            totalsStorage.totalClaimed = uint128(newTotalClaimed);
             earnStorage.claimable = 0;
 
             IERC20(reward).safeTransfer(recipient, amount);
