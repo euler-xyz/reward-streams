@@ -21,7 +21,7 @@ contract BaseRewardStreamsHarness is BaseRewardStreams {
     function setDistributionData(
         address rewarded,
         address reward,
-        DistributionStorage calldata distributionStorage
+        DistributionStorage memory distributionStorage
     ) external {
         distributionData[rewarded][reward] = distributionStorage;
     }
@@ -58,9 +58,13 @@ contract BaseRewardStreamsHarness is BaseRewardStreams {
         address account,
         address rewarded,
         address reward,
-        EarnStorage calldata earnStorage
+        EarnStorage memory earnStorage
     ) external {
         accountEarnedData[account][rewarded][reward] = earnStorage;
+    }
+
+    function timeElapsedInEpoch(uint48 epoch, uint48 lastUpdated) external view returns (uint256) {
+        return _timeElapsedInEpoch(epoch, lastUpdated);
     }
 
     function msgSender() external view returns (address) {

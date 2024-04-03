@@ -2263,4 +2263,41 @@ contract ScenarioTest is Test {
         MockController(controller).liquidateCollateralShares(trackingRewarded, participant, trackingRewarded, 10e18);
         assertEq(MockERC20(trackingRewarded).balanceOf(participant), preBalance - 10e18);
     }
+
+    function test_AssertionTrigger(
+        address _account,
+        address _rewarded,
+        address _reward,
+        uint112 totalRegistered,
+        uint112 totalClaimed,
+        uint112 claimable
+    ) external {
+        vm.assume(_account != address(0));
+        vm.assume(totalRegistered < type(uint112).max);
+        vm.assume(totalClaimed <= totalRegistered);
+        claimable = uint112(bound(claimable, totalRegistered - totalClaimed + 1, type(uint112).max));
+
+        BaseRewardStreams.TotalsStorage memory totalsStorage = BaseRewardStreams.TotalsStorage({
+            totalEligible: 0,
+            totalRegistered: totalRegistered,
+            totalClaimed: totalClaimed
+        });
+
+        BaseRewardStreams.EarnStorage memory earnStorage =
+            BaseRewardStreams.EarnStorage({claimable: claimable, accumulator: 0});
+
+        stakingDistributor.setDistributionTotals(_rewarded, _reward, totalsStorage);
+        trackingDistributor.setDistributionTotals(_rewarded, _reward, totalsStorage);
+
+        stakingDistributor.setAccountEarnedData(_account, _rewarded, _reward, earnStorage);
+        trackingDistributor.setAccountEarnedData(_account, _rewarded, _reward, earnStorage);
+
+        vm.prank(_account);
+        vm.expectRevert();
+        stakingDistributor.claimReward(_rewarded, _reward, _account, true);
+
+        vm.prank(_account);
+        vm.expectRevert();
+        trackingDistributor.claimReward(_rewarded, _reward, _account, true);
+    }
 }

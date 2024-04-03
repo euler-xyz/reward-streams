@@ -93,6 +93,59 @@ contract ViewTest is Test {
         );
     }
 
+    function test_EpochHasntStarted_TimeElapsedInEpoch(
+        uint48 epoch,
+        uint48 lastUpdated,
+        uint256 blockTimestamp
+    ) external {
+        epoch = uint48(bound(epoch, 1, type(uint48).max / distributor.EPOCH_DURATION()));
+        blockTimestamp = bound(blockTimestamp, 0, distributor.getEpochStartTimestamp(epoch) - 1);
+        lastUpdated = uint48(bound(lastUpdated, 0, blockTimestamp));
+
+        vm.warp(blockTimestamp);
+        assertEq(distributor.timeElapsedInEpoch(epoch, lastUpdated), 0);
+    }
+
+    function test_EpochIsOngoing_TimeElapsedInEpoch(
+        uint48 epoch,
+        uint48 lastUpdated,
+        uint256 blockTimestamp
+    ) external {
+        epoch = uint48(bound(epoch, 1, type(uint48).max / distributor.EPOCH_DURATION()));
+        blockTimestamp = bound(
+            blockTimestamp, distributor.getEpochStartTimestamp(epoch), distributor.getEpochEndTimestamp(epoch) - 1
+        );
+        lastUpdated = uint48(bound(lastUpdated, 0, blockTimestamp));
+
+        vm.warp(blockTimestamp);
+
+        if (lastUpdated > distributor.getEpochStartTimestamp(epoch)) {
+            assertEq(distributor.timeElapsedInEpoch(epoch, lastUpdated), block.timestamp - lastUpdated);
+        } else {
+            assertEq(
+                distributor.timeElapsedInEpoch(epoch, lastUpdated),
+                block.timestamp - distributor.getEpochStartTimestamp(epoch)
+            );
+        }
+    }
+
+    function test_EpochHasEnded_TimeElapsedInEpoch(uint48 epoch, uint48 lastUpdated, uint256 blockTimestamp) external {
+        epoch = uint48(bound(epoch, 1, type(uint48).max / distributor.EPOCH_DURATION()));
+        blockTimestamp = bound(blockTimestamp, distributor.getEpochEndTimestamp(epoch), type(uint48).max);
+        lastUpdated = uint48(bound(lastUpdated, 0, distributor.getEpochEndTimestamp(epoch)));
+
+        vm.warp(blockTimestamp);
+
+        if (lastUpdated > distributor.getEpochStartTimestamp(epoch)) {
+            assertEq(
+                distributor.timeElapsedInEpoch(epoch, lastUpdated),
+                distributor.getEpochEndTimestamp(epoch) - lastUpdated
+            );
+        } else {
+            assertEq(distributor.timeElapsedInEpoch(epoch, lastUpdated), distributor.EPOCH_DURATION());
+        }
+    }
+
     function test_msgSender(address caller) external {
         vm.assume(caller != address(0) && caller != address(evc));
 
