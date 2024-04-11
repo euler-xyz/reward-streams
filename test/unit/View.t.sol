@@ -14,7 +14,7 @@ contract ViewTest is Test {
 
     function setUp() external {
         evc = new EthereumVaultConnector();
-        distributor = new BaseRewardStreamsHarness(evc, 10 days);
+        distributor = new BaseRewardStreamsHarness(address(evc), 10 days);
     }
 
     function test_EnabledRewards(address account, address rewarded, uint8 n, bytes memory seed) external {

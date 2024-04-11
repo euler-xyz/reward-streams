@@ -2,7 +2,11 @@
 
 pragma solidity ^0.8.24;
 
-import "./BaseRewardStreams.sol";
+import {SafeERC20, IERC20} from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
+import {EVCUtil, IEVC} from "evc/utils/EVCUtil.sol";
+import {Set, SetStorage} from "evc/Set.sol";
+import {BaseRewardStreams} from "./BaseRewardStreams.sol";
+import {IStakingRewardStreams} from "./interfaces/IRewardStreams.sol";
 
 /// @title StakingRewardStreams
 /// @author Euler Labs (https://www.eulerlabs.com/)
@@ -21,7 +25,7 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
     /// @notice Constructor for the StakingRewardStreams contract.
     /// @param evc The Ethereum Vault Connector contract.
     /// @param periodDuration The duration of a period.
-    constructor(IEVC evc, uint48 periodDuration) BaseRewardStreams(evc, periodDuration) {}
+    constructor(address evc, uint48 periodDuration) BaseRewardStreams(evc, periodDuration) {}
 
     /// @notice Allows a user to stake rewarded tokens.
     /// @dev If the amount is max, the entire balance of the user is staked.

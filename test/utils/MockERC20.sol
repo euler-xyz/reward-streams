@@ -3,8 +3,22 @@ pragma solidity ^0.8.0;
 
 import "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import "evc/interfaces/IEthereumVaultConnector.sol";
-import "../../src/interfaces/IBalanceForwarder.sol";
 import "../../src/interfaces/IBalanceTracker.sol";
+
+/// @title IBalanceForwarder
+/// @author Euler Labs (https://www.eulerlabs.com/)
+/// @notice This interface defines the functions for enabling and disabling balance forwarding.
+interface IBalanceForwarder {
+    /// @notice Enables balance forwarding for the msg.sender
+    /// @dev Only the msg.sender can enable balance forwarding for itself
+    /// @dev Should call the IBalanceTracker hook with the current account's balance
+    function enableBalanceForwarding() external;
+
+    /// @notice Disables balance forwarding for the msg.sender
+    /// @dev Only the msg.sender can disable balance forwarding for itself
+    /// @dev Should call the IBalanceTracker hook with the account's balance of 0
+    function disableBalanceForwarding() external;
+}
 
 contract MockERC20 is ERC20 {
     constructor(string memory _name, string memory _symbol) ERC20(_name, _symbol) {}
