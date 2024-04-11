@@ -21,8 +21,8 @@ contract ScenarioTest is Test {
     function setUp() external {
         evc = new EthereumVaultConnector();
 
-        stakingDistributor = new StakingRewardStreamsHarness(evc, 10 days);
-        trackingDistributor = new TrackingRewardStreamsHarness(evc, 10 days);
+        stakingDistributor = new StakingRewardStreamsHarness(address(evc), 10 days);
+        trackingDistributor = new TrackingRewardStreamsHarness(address(evc), 10 days);
 
         stakingRewarded = address(new MockERC20("Staking Rewarded", "SRWDD"));
         vm.label(stakingRewarded, "STAKING REWARDED");
@@ -156,7 +156,7 @@ contract ScenarioTest is Test {
         address participant,
         uint128 balance
     ) external {
-        vm.assume(participant != address(0) && participant.code.length == 0);
+        vm.assume(participant != address(0) && participant != seeder && participant.code.length == 0);
         blockTimestamp = uint48(bound(blockTimestamp, 1, type(uint48).max - 365 days));
         amountsLength = uint8(bound(amountsLength, 1, 25));
         balance = uint128(bound(balance, 1, 100e18));
@@ -338,7 +338,7 @@ contract ScenarioTest is Test {
         address participant,
         uint128 balance
     ) external {
-        vm.assume(participant != address(0) && participant.code.length == 0);
+        vm.assume(participant != address(0) && participant != seeder && participant.code.length == 0);
         blockTimestamp = uint48(bound(blockTimestamp, 1, type(uint48).max - 365 days));
         amountsLength = uint8(bound(amountsLength, 1, 25));
         vm.assume(amountsLength % 4 == 0);
@@ -448,8 +448,14 @@ contract ScenarioTest is Test {
     // single rewarded and single reward; multiple participants who don't earn all the time (hence address(0) earns some
     // rewards)
     function test_Scenario_4(uint48 blockTimestamp, address participant1, address participant2) external {
-        vm.assume(participant1 != address(0) && participant1 != address(1) && participant1.code.length == 0);
-        vm.assume(participant2 != address(0) && participant2 != address(1) && participant2.code.length == 0);
+        vm.assume(
+            participant1 != address(0) && participant1 != address(1) && participant1 != seeder
+                && participant1.code.length == 0
+        );
+        vm.assume(
+            participant2 != address(0) && participant2 != address(1) && participant2 != seeder
+                && participant2.code.length == 0
+        );
         vm.assume(participant1 != participant2);
         blockTimestamp = uint48(bound(blockTimestamp, 1, type(uint48).max - 365 days));
 
@@ -901,8 +907,14 @@ contract ScenarioTest is Test {
     // single rewarded and multiple rewards; multiple participants who don't earn all the time (hence address(0) earns
     // some rewards)
     function test_Scenario_5(uint48 blockTimestamp, address participant1, address participant2) external {
-        vm.assume(participant1 != address(0) && participant1 != address(1) && participant1.code.length == 0);
-        vm.assume(participant2 != address(0) && participant2 != address(1) && participant2.code.length == 0);
+        vm.assume(
+            participant1 != address(0) && participant1 != address(1) && participant1 != seeder
+                && participant1.code.length == 0
+        );
+        vm.assume(
+            participant2 != address(0) && participant2 != address(1) && participant2 != seeder
+                && participant2.code.length == 0
+        );
         vm.assume(participant1 != participant2);
         blockTimestamp = uint48(bound(blockTimestamp, 1, type(uint48).max - 365 days));
 
@@ -1600,9 +1612,18 @@ contract ScenarioTest is Test {
         address participant2,
         address participant3
     ) external {
-        vm.assume(participant1 != address(0) && participant1 != address(1) && participant1.code.length == 0);
-        vm.assume(participant2 != address(0) && participant2 != address(1) && participant2.code.length == 0);
-        vm.assume(participant3 != address(0) && participant3 != address(1) && participant3.code.length == 0);
+        vm.assume(
+            participant1 != address(0) && participant1 != address(1) && participant1 != seeder
+                && participant1.code.length == 0
+        );
+        vm.assume(
+            participant2 != address(0) && participant2 != address(1) && participant2 != seeder
+                && participant2.code.length == 0
+        );
+        vm.assume(
+            participant3 != address(0) && participant3 != address(1) && participant3 != seeder
+                && participant3.code.length == 0
+        );
         vm.assume(participant1 != participant2 && participant1 != participant3 && participant2 != participant3);
         blockTimestamp = uint48(bound(blockTimestamp, 1, type(uint48).max - 365 days));
 
@@ -1885,9 +1906,9 @@ contract ScenarioTest is Test {
         address participant2,
         address participant3
     ) external {
-        vm.assume(participant1 != address(0) && participant1 != address(evc));
-        vm.assume(participant2 != address(0) && participant2 != address(evc));
-        vm.assume(participant3 != address(0) && participant3 != address(evc));
+        vm.assume(participant1 != address(0) && participant1 != seeder && participant1 != address(evc));
+        vm.assume(participant2 != address(0) && participant2 != seeder && participant2 != address(evc));
+        vm.assume(participant3 != address(0) && participant3 != seeder && participant3 != address(evc));
         vm.assume(participant1 != participant2 && participant1 != participant3 && participant2 != participant3);
         blockTimestamp = uint48(bound(blockTimestamp, 1, type(uint48).max - 365 days));
 
@@ -2067,8 +2088,9 @@ contract ScenarioTest is Test {
     // staking/unstaking within the same block
     function test_Scenario_8(uint48 blockTimestamp, address participant) external {
         vm.assume(
-            participant != address(0) && participant != address(evc) && participant != address(stakingDistributor)
-                && participant != stakingRewarded && participant != address(trackingDistributor)
+            participant != address(0) && participant != seeder && participant != address(evc)
+                && participant != address(stakingDistributor) && participant != stakingRewarded
+                && participant != address(trackingDistributor)
         );
         blockTimestamp = uint48(bound(blockTimestamp, 1, type(uint48).max - 365 days));
 
@@ -2135,8 +2157,9 @@ contract ScenarioTest is Test {
     // reward and rewarded are the same
     function test_Scenario_9(uint48 blockTimestamp, address participant) external {
         vm.assume(
-            participant != address(0) && participant != address(evc) && participant != address(stakingDistributor)
-                && participant != stakingRewarded && participant != address(trackingDistributor)
+            participant != address(0) && participant != seeder && participant != address(evc)
+                && participant != address(stakingDistributor) && participant != stakingRewarded
+                && participant != address(trackingDistributor)
         );
         blockTimestamp = uint48(bound(blockTimestamp, 1, type(uint48).max - 365 days));
 
@@ -2200,7 +2223,7 @@ contract ScenarioTest is Test {
     }
 
     function test_Scenario_Liquidation(uint48 blockTimestamp, address participant) external {
-        vm.assume(participant != address(0) && participant.code.length == 0);
+        vm.assume(participant != address(0) && participant != seeder && participant.code.length == 0);
         blockTimestamp = uint48(bound(blockTimestamp, 1, type(uint48).max - 365 days));
 
         address[] memory rewards = new address[](5);

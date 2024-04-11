@@ -16,7 +16,7 @@ contract StakingTest is Test {
 
     function setUp() external {
         evc = new EthereumVaultConnector();
-        distributor = new StakingRewardStreamsHarness(evc, 10 days);
+        distributor = new StakingRewardStreamsHarness(address(evc), 10 days);
         rewarded = address(new MockERC20("Rewarded", "RWDD"));
         rewardedMalicious = address(new MockERC20Malicious("RewardedMalicious", "RWDMLC"));
     }

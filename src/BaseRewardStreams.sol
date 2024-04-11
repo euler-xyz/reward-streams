@@ -2,11 +2,11 @@
 
 pragma solidity ^0.8.24;
 
-import "openzeppelin-contracts/utils/ReentrancyGuard.sol";
-import "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
-import "evc/utils/EVCUtil.sol";
-import "evc/Set.sol";
-import "./interfaces/IRewardStreams.sol";
+import {ReentrancyGuard} from "openzeppelin-contracts/utils/ReentrancyGuard.sol";
+import {SafeERC20, IERC20} from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
+import {EVCUtil, IEVC} from "evc/utils/EVCUtil.sol";
+import {Set, SetStorage} from "evc/Set.sol";
+import {IRewardStreams} from "./interfaces/IRewardStreams.sol";
 
 /// @title BaseRewardStreams
 /// @author Euler Labs (https://www.eulerlabs.com/)
@@ -20,6 +20,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     uint256 public constant MAX_EPOCHS_AHEAD = 5;
     uint256 public constant MAX_DISTRIBUTION_LENGTH = 25;
     uint256 public constant MAX_REWARDS_ENABLED = 5;
+    uint256 internal constant MAX_EPOCH_DURATION = 7 days;
     uint256 internal constant EPOCHS_PER_SLOT = 2;
 
     // this value is used to increase the precision of the calculations due to the fact that distributed amount of
@@ -41,15 +42,28 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @notice Event emitted when a reward token is claimed.
     event RewardClaimed(address indexed account, address indexed rewarded, address indexed reward, uint256 amount);
 
+    /// @notice Epoch-related error. Thrown when epoch duration or start epoch is invalid.
     error InvalidEpoch();
+
+    /// @notice Amount-related error. Thrown when the reward amount is invalid or invalid amount of tokens was
+    /// transferred.
     error InvalidAmount();
+
+    /// @notice Distribution-related error. Thrown when the reward distribution length is invalid.
+    error InvalidDistribution();
+
+    /// @notice Accumulator-related error. Thrown when the registered reward amount may cause an accumulator overflow.
     error AccumulatorOverflow();
+
+    /// @notice Rewards-related error. Thrown when user tries to enable too many rewards.
     error TooManyRewardsEnabled();
 
     /// @notice Struct to store distribution data per rewarded and reward tokens.
     struct DistributionStorage {
+        /// @notice The last timestamp when the distribution was updated.
         uint48 lastUpdated;
-        uint144 accumulator;
+        /// @notice The most recent accumulator value.
+        uint208 accumulator;
     }
 
     /// @notice Struct to store totals data per rewarded and reward tokens.
@@ -84,8 +98,8 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @notice Constructor for the BaseRewardStreams contract.
     /// @param _evc The Ethereum Vault Connector contract.
     /// @param _epochDuration The duration of an epoch.
-    constructor(IEVC _evc, uint48 _epochDuration) EVCUtil(_evc) {
-        if (_epochDuration < 7 days) {
+    constructor(address _evc, uint48 _epochDuration) EVCUtil(_evc) {
+        if (_epochDuration < MAX_EPOCH_DURATION) {
             revert InvalidEpoch();
         }
 
@@ -117,7 +131,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
 
         // distribution scheme should be at most MAX_DISTRIBUTION_LENGTH epochs long
         if (rewardAmounts.length > MAX_DISTRIBUTION_LENGTH) {
-            revert InvalidAmount();
+            revert InvalidDistribution();
         }
 
         // calculate the total amount to be distributed in this distribution scheme
@@ -571,8 +585,9 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         accountEarned.claimable +=
             uint112(uint256(distribution.accumulator - accountEarned.accumulator) * currentAccountBalance / SCALER);
 
-        // Snapshot new accumulator value.
-        accountEarned.accumulator = distribution.accumulator;
+        // Snapshot new accumulator value. Downcasting is safe here because SCALER * totalRegistered is less than
+        // type(uint144).max
+        accountEarned.accumulator = uint144(distribution.accumulator);
     }
 
     /// @notice Transfers a specified amount of a token from a given address to this contract.

@@ -19,7 +19,7 @@ contract RegisterRewardTest is Test {
     function setUp() external {
         evc = new EthereumVaultConnector();
 
-        distributor = new BaseRewardStreamsHarness(evc, 10 days);
+        distributor = new BaseRewardStreamsHarness(address(evc), 10 days);
 
         rewarded = address(new MockERC20("Rewarded", "RWDD"));
         vm.label(rewarded, "REWARDED");
@@ -52,7 +52,7 @@ contract RegisterRewardTest is Test {
             vm.expectRevert(BaseRewardStreams.InvalidEpoch.selector);
         }
 
-        new BaseRewardStreamsHarness(IEVC(address(0)), epochDuration);
+        new BaseRewardStreamsHarness(address(1), epochDuration);
     }
 
     function test_RegisterReward(
@@ -71,7 +71,7 @@ contract RegisterRewardTest is Test {
         amountsLength2 = uint8(bound(amountsLength2, 1, 25));
 
         vm.warp(blockTimestamp);
-        distributor = new BaseRewardStreamsHarness(evc, epochDuration);
+        distributor = new BaseRewardStreamsHarness(address(evc), epochDuration);
 
         vm.startPrank(seeder);
         MockERC20(reward).approve(address(distributor), type(uint256).max);
@@ -266,27 +266,13 @@ contract RegisterRewardTest is Test {
     function test_RevertIfInvalidAmounts_RegisterReward(uint8 numberOfEpochs) external {
         uint128[] memory amounts = new uint128[](numberOfEpochs);
 
-        // make total amount greater than zero
-        if (amounts.length > 0) {
-            amounts[0] = 1;
-        }
-
-        vm.startPrank(seeder);
-        if (amounts.length == 0 || amounts.length > distributor.MAX_DISTRIBUTION_LENGTH()) {
+        if (amounts.length > distributor.MAX_DISTRIBUTION_LENGTH()) {
+            vm.expectRevert(BaseRewardStreams.InvalidDistribution.selector);
+            distributor.registerReward(rewarded, reward, 0, amounts);
+        } else {
             vm.expectRevert(BaseRewardStreams.InvalidAmount.selector);
+            distributor.registerReward(rewarded, reward, 0, amounts);
         }
-        distributor.registerReward(rewarded, reward, 0, amounts);
-        vm.stopPrank();
-
-        // total amount is zero which is also invalid
-        if (amounts.length > 0) {
-            amounts[0] = 0;
-        }
-
-        vm.startPrank(seeder);
-        vm.expectRevert(BaseRewardStreams.InvalidAmount.selector);
-        distributor.registerReward(rewarded, reward, 0, amounts);
-        vm.stopPrank();
     }
 
     function test_RevertIfAccumulatorOverflows_RegisterReward() external {

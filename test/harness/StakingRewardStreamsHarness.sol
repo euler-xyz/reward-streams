@@ -8,7 +8,7 @@ contract StakingRewardStreamsHarness is StakingRewardStreams {
     using SafeERC20 for IERC20;
     using Set for SetStorage;
 
-    constructor(IEVC evc, uint48 epochDuration) StakingRewardStreams(evc, epochDuration) {}
+    constructor(address evc, uint48 epochDuration) StakingRewardStreams(evc, epochDuration) {}
 
     function setDistributionAmount(address rewarded, address reward, uint48 epoch, uint128 amount) external {
         distributionAmounts[rewarded][reward][_storageIndex(epoch)][_epochIndex(epoch)] = amount;

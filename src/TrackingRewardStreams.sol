@@ -2,8 +2,11 @@
 
 pragma solidity ^0.8.24;
 
-import "./BaseRewardStreams.sol";
-import "./interfaces/IBalanceForwarder.sol";
+import {SafeERC20, IERC20} from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
+import {EVCUtil, IEVC} from "evc/utils/EVCUtil.sol";
+import {Set, SetStorage} from "evc/Set.sol";
+import {BaseRewardStreams} from "./BaseRewardStreams.sol";
+import {ITrackingRewardStreams} from "./interfaces/IRewardStreams.sol";
 
 /// @title TrackingRewardStreams
 /// @author Euler Labs (https://www.eulerlabs.com/)
@@ -20,7 +23,7 @@ contract TrackingRewardStreams is BaseRewardStreams, ITrackingRewardStreams {
     /// @notice Constructor for the TrackingRewardStreams contract.
     /// @param evc The Ethereum Vault Connector contract.
     /// @param epochDuration The duration of an epoch.
-    constructor(IEVC evc, uint48 epochDuration) BaseRewardStreams(evc, epochDuration) {}
+    constructor(address evc, uint48 epochDuration) BaseRewardStreams(evc, epochDuration) {}
 
     /// @notice Executes the balance tracking hook for an account
     /// @param account The account address to execute the hook for
@@ -45,7 +48,7 @@ contract TrackingRewardStreams is BaseRewardStreams, ITrackingRewardStreams {
             );
 
             distributionTotals[rewarded][reward].totalEligible =
-                currentTotalEligible - currentAccountBalance + newAccountBalance;
+                currentTotalEligible + newAccountBalance - currentAccountBalance;
         }
 
         accountBalances[account][rewarded] = newAccountBalance;
