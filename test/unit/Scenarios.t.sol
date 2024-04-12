@@ -1906,9 +1906,18 @@ contract ScenarioTest is Test {
         address participant2,
         address participant3
     ) external {
-        vm.assume(participant1 != address(0) && participant1 != seeder && participant1 != address(evc));
-        vm.assume(participant2 != address(0) && participant2 != seeder && participant2 != address(evc));
-        vm.assume(participant3 != address(0) && participant3 != seeder && participant3 != address(evc));
+        vm.assume(
+            participant1 != address(0) && participant1 != seeder && participant1 != address(evc)
+                && participant1.code.length == 0
+        );
+        vm.assume(
+            participant2 != address(0) && participant2 != seeder && participant2 != address(evc)
+                && participant2.code.length == 0
+        );
+        vm.assume(
+            participant3 != address(0) && participant3 != seeder && participant3 != address(evc)
+                && participant3.code.length == 0
+        );
         vm.assume(participant1 != participant2 && participant1 != participant3 && participant2 != participant3);
         blockTimestamp = uint48(bound(blockTimestamp, 1, type(uint48).max - 365 days));
 
@@ -2322,5 +2331,30 @@ contract ScenarioTest is Test {
         vm.prank(_account);
         vm.expectRevert();
         trackingDistributor.claimReward(_rewarded, _reward, _account, true);
+    }
+
+    function test_RevertWhenRecipientInvalid_Claim(
+        address _rewarded,
+        address _reward,
+        address _receiver,
+        bool _forfeitRecentReward
+    ) external {
+        vm.assume(_receiver != address(0));
+
+        vm.expectRevert(BaseRewardStreams.InvalidRecipient.selector);
+        stakingDistributor.claimReward(_rewarded, _reward, address(0), _forfeitRecentReward);
+        stakingDistributor.claimReward(_rewarded, _reward, _receiver, _forfeitRecentReward);
+
+        vm.expectRevert(BaseRewardStreams.InvalidRecipient.selector);
+        trackingDistributor.claimReward(_rewarded, _reward, address(0), _forfeitRecentReward);
+        trackingDistributor.claimReward(_rewarded, _reward, _receiver, _forfeitRecentReward);
+
+        vm.expectRevert(BaseRewardStreams.InvalidRecipient.selector);
+        stakingDistributor.claimSpilloverReward(_rewarded, _reward, address(0));
+        stakingDistributor.claimSpilloverReward(_rewarded, _reward, _receiver);
+
+        vm.expectRevert(BaseRewardStreams.InvalidRecipient.selector);
+        trackingDistributor.claimSpilloverReward(_rewarded, _reward, address(0));
+        trackingDistributor.claimSpilloverReward(_rewarded, _reward, _receiver);
     }
 }
