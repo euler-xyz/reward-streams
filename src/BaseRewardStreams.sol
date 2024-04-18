@@ -550,18 +550,12 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             uint48 lastUpdated = distribution.lastUpdated;
             uint48 epochStart = getEpoch(lastUpdated);
             uint48 epochEnd = currentEpoch();
-            uint128[EPOCHS_PER_SLOT] memory amounts;
             uint256 delta;
 
             // Calculate the amount of tokens since the last update that should be distributed.
             for (uint48 i = epochStart; i <= epochEnd; ++i) {
-                // Read the storage slot only every other epoch or if it's the start epoch.
-                uint256 epochIndex = _epochIndex(i);
-                if (epochIndex == 0 || i == epochStart) {
-                    amounts = distributionAmounts[rewarded][reward][_storageIndex(i)];
-                }
-
-                delta += SCALER * _timeElapsedInEpoch(i, lastUpdated) * amounts[epochIndex] / EPOCH_DURATION;
+                delta += SCALER * _timeElapsedInEpoch(i, lastUpdated)
+                    * distributionAmounts[rewarded][reward][_storageIndex(i)][_epochIndex(i)] / EPOCH_DURATION;
             }
 
             // Increase the accumulator scaled by the total eligible amount earning reward. In case nobody earns
