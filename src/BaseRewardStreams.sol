@@ -168,7 +168,9 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         totalsStorage.totalRegistered = uint128(totalRegistered);
 
         // store the amounts to be distributed
-        storeAmounts(rewarded, reward, startEpoch, rewardAmounts);
+        for (uint48 i; i < rewardAmounts.length; ++i) {
+            increaseRewardAmount(rewarded, reward, startEpoch + i, rewardAmounts[i]);
+        }
 
         // transfer the total amount to be distributed to the contract
         address msgSender = _msgSender();
@@ -424,22 +426,6 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @return The end timestamp for the given epoch.
     function getEpochEndTimestamp(uint48 epoch) public view override returns (uint48) {
         return uint48(getEpochStartTimestamp(epoch) + EPOCH_DURATION);
-    }
-
-    /// @notice Stores the reward token distribution amounts for a given rewarded token.
-    /// @param rewarded The address of the rewarded token.
-    /// @param reward The address of the reward token.
-    /// @param startEpoch The starting epoch for the distribution.
-    /// @param amountsToBeStored The reward token amounts to be stored for each epoch.
-    function storeAmounts(
-        address rewarded,
-        address reward,
-        uint48 startEpoch,
-        uint128[] memory amountsToBeStored
-    ) internal virtual {
-        for (uint48 i; i < amountsToBeStored.length; ++i) {
-            increaseRewardAmount(rewarded, reward, startEpoch + i, amountsToBeStored[i]);
-        }
     }
 
     /// @notice Claims the earned reward for a specific account, rewarded token, and reward token, and transfers it to
