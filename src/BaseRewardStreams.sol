@@ -362,7 +362,21 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         address reward,
         uint48 epoch
     ) public view virtual override returns (uint256) {
-        return distributionAmounts[rewarded][reward][_storageIndex(epoch)][_epochIndex(epoch)];
+        return distributionAmounts[rewarded][reward][epoch / EPOCHS_PER_SLOT][epoch % EPOCHS_PER_SLOT];
+    }
+
+    /// @notice Increases the reward token amount for a specific rewarded token and epoch.
+    /// @param rewarded The address of the rewarded token.
+    /// @param reward The address of the reward token.
+    /// @param epoch The epoch to increase the reward token amount for.
+    /// @param amount The token amount to increase by.
+    function increaseRewardAmount(
+        address rewarded,
+        address reward,
+        uint48 epoch,
+        uint128 amount
+    ) internal {
+        distributionAmounts[rewarded][reward][epoch / EPOCHS_PER_SLOT][epoch % EPOCHS_PER_SLOT] += amount;
     }
 
     /// @notice Returns the total supply of the rewarded token enabled and eligible to receive the reward token.
@@ -428,25 +442,8 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         uint48 startEpoch,
         uint128[] memory amountsToBeStored
     ) internal virtual {
-        uint256 length = amountsToBeStored.length;
-        uint256 startStorageIndex = _storageIndex(startEpoch);
-        uint256 endStorageIndex = _storageIndex(startEpoch + length - 1);
-
-        mapping(uint256 => uint128[EPOCHS_PER_SLOT]) storage storageAmounts = distributionAmounts[rewarded][reward];
-        uint256 memoryIndex;
-        uint128[EPOCHS_PER_SLOT] memory memoryAmounts;
-
-        for (uint256 i = startStorageIndex; i <= endStorageIndex; ++i) {
-            memoryAmounts = storageAmounts[i];
-
-            // assign amounts to the appropriate indices based on the epoch
-            for (uint256 j = _epochIndex(startEpoch + memoryIndex); j < EPOCHS_PER_SLOT && memoryIndex < length; ++j) {
-                unchecked {
-                    memoryAmounts[j] += amountsToBeStored[memoryIndex++];
-                }
-            }
-
-            storageAmounts[i] = memoryAmounts;
+        for (uint48 i; i < amountsToBeStored.length; ++i) {
+            increaseRewardAmount(rewarded, reward, startEpoch + i, amountsToBeStored[i]);
         }
     }
 
@@ -599,20 +596,6 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         if (token.balanceOf(address(this)) - preBalance != amount) {
             revert InvalidAmount();
         }
-    }
-
-    /// @notice Returns the storage index for a given epoch.
-    /// @param epoch The epoch to get the storage index for.
-    /// @return The storage index for the given epoch.
-    function _storageIndex(uint256 epoch) internal pure returns (uint256) {
-        return epoch / EPOCHS_PER_SLOT;
-    }
-
-    /// @notice Returns the epoch index for a given epoch.
-    /// @param epoch The epoch to get the epoch index for.
-    /// @return The epoch index for the given epoch.
-    function _epochIndex(uint256 epoch) internal pure returns (uint256) {
-        return epoch % EPOCHS_PER_SLOT;
     }
 
     /// @notice Calculates the time elapsed within a given epoch.
