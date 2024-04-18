@@ -554,8 +554,8 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
 
             // Calculate the amount of tokens since the last update that should be distributed.
             for (uint48 i = epochStart; i <= epochEnd; ++i) {
-                delta += SCALER * _timeElapsedInEpoch(i, lastUpdated)
-                    * uint256(distributionAmounts[rewarded][reward][_storageIndex(i)][_epochIndex(i)]) / EPOCH_DURATION;
+                delta +=
+                    SCALER * _timeElapsedInEpoch(i, lastUpdated) * rewardAmount(rewarded, reward, i) / EPOCH_DURATION;
             }
 
             // Increase the accumulator scaled by the total eligible amount earning reward. In case nobody earns
