@@ -370,12 +370,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @param reward The address of the reward token.
     /// @param epoch The epoch to increase the reward token amount for.
     /// @param amount The token amount to increase by.
-    function increaseRewardAmount(
-        address rewarded,
-        address reward,
-        uint48 epoch,
-        uint128 amount
-    ) internal {
+    function increaseRewardAmount(address rewarded, address reward, uint48 epoch, uint128 amount) internal {
         distributionAmounts[rewarded][reward][epoch / EPOCHS_PER_SLOT][epoch % EPOCHS_PER_SLOT] += amount;
     }
 
