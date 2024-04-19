@@ -139,7 +139,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
 
         // calculate the total amount to be distributed in this distribution scheme
         uint256 totalAmount;
-        for (uint256 i; i < rewardAmounts.length; ++i) {
+        for (uint256 i = 0; i < rewardAmounts.length; ++i) {
             totalAmount += rewardAmounts[i];
         }
 
@@ -168,8 +168,13 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         totalsStorage.totalRegistered = uint128(totalRegistered);
 
         // store the amounts to be distributed
-        for (uint48 i; i < rewardAmounts.length; ++i) {
-            increaseRewardAmount(rewarded, reward, startEpoch + i, rewardAmounts[i]);
+        mapping(uint256 => uint128[EPOCHS_PER_SLOT]) storage ptrAmounts = distributionAmounts[rewarded][reward];
+        for (uint48 i = 0; i < rewardAmounts.length; ++i) {
+            // safe against overflow because the total registered amount is at most
+            // type(uint144).max / SCALER < type(uint128).max
+            unchecked {
+                ptrAmounts[(startEpoch + i) / EPOCHS_PER_SLOT][(startEpoch + i) % EPOCHS_PER_SLOT] += rewardAmounts[i];
+            }
         }
 
         // transfer the total amount to be distributed to the contract
@@ -365,15 +370,6 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         uint48 epoch
     ) public view virtual override returns (uint256) {
         return distributionAmounts[rewarded][reward][epoch / EPOCHS_PER_SLOT][epoch % EPOCHS_PER_SLOT];
-    }
-
-    /// @notice Increases the reward token amount for a specific rewarded token and epoch.
-    /// @param rewarded The address of the rewarded token.
-    /// @param reward The address of the reward token.
-    /// @param epoch The epoch to increase the reward token amount for.
-    /// @param amount The token amount to increase by.
-    function increaseRewardAmount(address rewarded, address reward, uint48 epoch, uint128 amount) internal {
-        distributionAmounts[rewarded][reward][epoch / EPOCHS_PER_SLOT][epoch % EPOCHS_PER_SLOT] += amount;
     }
 
     /// @notice Returns the total supply of the rewarded token enabled and eligible to receive the reward token.
