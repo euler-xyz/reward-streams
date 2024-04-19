@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-pragma solidity =0.8.24;
+pragma solidity 0.8.24;
 
 import {ReentrancyGuard} from "openzeppelin-contracts/utils/ReentrancyGuard.sol";
 import {SafeERC20, IERC20} from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
@@ -168,12 +168,12 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         totalsStorage.totalRegistered = uint128(totalRegistered);
 
         // store the amounts to be distributed
-        mapping(uint256 => uint128[EPOCHS_PER_SLOT]) storage ptrAmounts = distributionAmounts[rewarded][reward];
+        mapping(uint256 => uint128[EPOCHS_PER_SLOT]) storage amounts = distributionAmounts[rewarded][reward];
         for (uint48 i = 0; i < rewardAmounts.length; ++i) {
             // safe against overflow because the total registered amount is at most
             // type(uint144).max / SCALER < type(uint128).max
             unchecked {
-                ptrAmounts[(startEpoch + i) / EPOCHS_PER_SLOT][(startEpoch + i) % EPOCHS_PER_SLOT] += rewardAmounts[i];
+                amounts[(startEpoch + i) / EPOCHS_PER_SLOT][(startEpoch + i) % EPOCHS_PER_SLOT] += rewardAmounts[i];
             }
         }
 
