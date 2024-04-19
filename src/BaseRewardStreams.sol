@@ -168,14 +168,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         totalsStorage.totalRegistered = uint128(totalRegistered);
 
         // store the amounts to be distributed
-        mapping(uint256 => uint128[EPOCHS_PER_SLOT]) storage amounts = distributionAmounts[rewarded][reward];
-        for (uint48 i = 0; i < rewardAmounts.length; ++i) {
-            // safe against overflow because the total registered amount is at most
-            // type(uint144).max / SCALER < type(uint128).max
-            unchecked {
-                amounts[(startEpoch + i) / EPOCHS_PER_SLOT][(startEpoch + i) % EPOCHS_PER_SLOT] += rewardAmounts[i];
-            }
-        }
+        increaseRewardAmounts(rewarded, reward, startEpoch, rewardAmounts);
 
         // transfer the total amount to be distributed to the contract
         address msgSender = _msgSender();
@@ -422,6 +415,28 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @return The end timestamp for the given epoch.
     function getEpochEndTimestamp(uint48 epoch) public view override returns (uint48) {
         return uint48(getEpochStartTimestamp(epoch) + EPOCH_DURATION);
+    }
+
+    /// @notice Increases the reward token amounts for a specific rewarded token.
+    /// @param rewarded The address of the rewarded token.
+    /// @param reward The address of the reward token.
+    /// @param startEpoch The starting epoch to increase the reward token amount for.
+    /// @param amounts The token amounts to increase by.
+    function increaseRewardAmounts(
+        address rewarded,
+        address reward,
+        uint48 startEpoch,
+        uint128[] memory amounts
+    ) internal virtual {
+        mapping(uint256 => uint128[EPOCHS_PER_SLOT]) storage storageAmounts = distributionAmounts[rewarded][reward];
+
+        for (uint48 i = 0; i < amounts.length; ++i) {
+            // safe against overflow because the total registered amount is at most
+            // type(uint144).max / SCALER < type(uint128).max
+            unchecked {
+                storageAmounts[(startEpoch + i) / EPOCHS_PER_SLOT][(startEpoch + i) % EPOCHS_PER_SLOT] += amounts[i];
+            }
+        }
     }
 
     /// @notice Claims the earned reward for a specific account, rewarded token, and reward token, and transfers it to
