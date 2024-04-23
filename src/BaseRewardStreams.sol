@@ -87,17 +87,21 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         uint144 accumulator;
     }
 
+    /// @notice Struct to store account data per account and rewarded token.
+    struct AccountStorage {
+        /// @notice The account's rewarded token balance.
+        uint256 balance;
+        /// @notice The account's set of enabled reward tokens.
+        SetStorage enabledRewards;
+        /// @notice The accont's earnins per reward token.
+        mapping(address reward => EarnStorage) earned;
+    }
+
     mapping(address rewarded => mapping(address reward => mapping(uint256 storageIndex => uint128[EPOCHS_PER_SLOT])))
         internal distributionAmounts;
 
     mapping(address rewarded => mapping(address reward => DistributionStorage)) internal distributionData;
     mapping(address rewarded => mapping(address reward => TotalsStorage)) internal distributionTotals;
-
-    struct AccountStorage {
-        SetStorage enabledRewards;
-        uint256 balance;
-        mapping(address reward => EarnStorage) earned;
-    }
 
     mapping(address account => mapping(address rewarded => AccountStorage)) internal accounts;
 
