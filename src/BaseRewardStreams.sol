@@ -548,9 +548,9 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     }
 
     /// @notice Transfers a specified amount of a token from a given address to this contract.
-    /// @dev This function uses the ERC20 safeTransferFrom function to move tokens.
+    /// @dev This function uses `SafeERC20.safeTransferFrom` function to move tokens.
     /// It checks the balance before and after the transfer to ensure the correct amount has been transferred.
-    /// If the transferred amount does not match the expected amount, it reverts the transaction.
+    /// If the transferred amount does not match the expected amount, it reverts.
     /// @param token The ERC20 token to transfer.
     /// @param from The address to transfer the tokens from.
     /// @param amount The amount of tokens to transfer.
@@ -580,18 +580,16 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         uint256 endTimestamp = getEpochEndTimestamp(epoch);
 
         // Calculate the time elapsed in the given epoch.
-        // If the epoch hasn't started yet
         if (block.timestamp < startTimestamp) {
+            // The epoch hasn't started yet.
             return 0;
-
-            // If the epoch is ongoing
         } else if (block.timestamp >= startTimestamp && block.timestamp < endTimestamp) {
+            // The epoch is ongoing.
             // If the last update was in or after the given epoch, return the time elapsed since the last update.
             // Otherwise return the time elapsed from the start of the given epoch.
             return lastUpdated > startTimestamp ? block.timestamp - lastUpdated : block.timestamp - startTimestamp;
-
-            // If the epoch has ended
         } else {
+            // The epoch has ended.
             // If the last update was in or after the given epoch, return the time elapsed between the last update to
             // the end of the given epoch. If the last update was before the start of the given epoch, return the epoch
             // duration.
