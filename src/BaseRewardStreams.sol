@@ -95,8 +95,10 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         mapping(address reward => EarnStorage) earned;
     }
 
+    /// @notice Stored distribution data per rewarded token and reward token.
     mapping(address rewarded => mapping(address reward => DistributionStorage)) internal distributions;
 
+    /// @notice Stored account data per address and rewarded token.
     mapping(address account => mapping(address rewarded => AccountStorage)) internal accounts;
 
     /// @notice Constructor for the BaseRewardStreams contract.
@@ -123,22 +125,22 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     ) external virtual override nonReentrant {
         uint48 epoch = currentEpoch();
 
-        // if start epoch is 0, set it to the next epoch
+        // If start epoch is 0, set it to the next epoch.
         if (startEpoch == 0) {
             startEpoch = epoch + 1;
         }
 
-        // start should be at most MAX_EPOCHS_AHEAD epochs in the future
+        // Start should be at most MAX_EPOCHS_AHEAD epochs in the future.
         if (!(startEpoch > epoch && startEpoch <= epoch + MAX_EPOCHS_AHEAD)) {
             revert InvalidEpoch();
         }
 
-        // distribution scheme should be at most MAX_DISTRIBUTION_LENGTH epochs long
+        // Distribution scheme should be at most MAX_DISTRIBUTION_LENGTH epochs long.
         if (rewardAmounts.length > MAX_DISTRIBUTION_LENGTH) {
             revert InvalidDistribution();
         }
 
-        // calculate the total amount to be distributed in this distribution scheme
+        // Calculate the total amount to be distributed in this distribution scheme.
         uint256 totalAmount;
         for (uint256 i = 0; i < rewardAmounts.length; ++i) {
             totalAmount += rewardAmounts[i];
@@ -148,7 +150,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             revert InvalidAmount();
         }
 
-        // initialize or update the data
+        // Initialize or update the distribution and reward data.
         DistributionStorage storage distributionStorage = distributions[rewarded][reward];
         if (distributionStorage.lastUpdated == 0) {
             distributionStorage.lastUpdated = uint48(block.timestamp);
@@ -156,21 +158,21 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             updateReward(rewarded, reward);
         }
 
-        // sanity check for overflow (assumes total eligible supply of 1 which is the worst case scenario)
+        // Sanity check for overflow (assumes total eligible supply of 1 which is the worst case scenario).
         uint256 totalRegistered = uint256(distributionStorage.totalRegistered) + totalAmount;
 
         if (SCALER * totalRegistered > type(uint144).max) {
             revert AccumulatorOverflow();
         }
 
-        // update the total registered amount. safe against overflow because
-        // type(uint144).max / SCALER < type(uint128).max
+        // Update the total registered amount.
+        // Overflow safe because `type(uint144).max / SCALER < type(uint128).max`.
         distributionStorage.totalRegistered = uint128(totalRegistered);
 
-        // store the amounts to be distributed
+        // Store the amounts to be distributed.
         increaseRewardAmounts(rewarded, reward, startEpoch, rewardAmounts);
 
-        // transfer the total amount to be distributed to the contract
+        // Transfer the total amount to be distributed to the contract.
         address msgSender = _msgSender();
         pullToken(IERC20(reward), msgSender, totalAmount);
 
@@ -304,7 +306,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         (uint112 deltaAccountZero,,) =
             calculateRewards(distributionStorage, accountEarned, currentAccountBalance, forfeitRecentReward);
 
-        // If we have spillover rewards, we add them to address(0)
+        // If we have spillover rewards, we add them to `address(0)`.
         if (account == address(0) && deltaAccountZero != 0) {
             return accountEarned.claimable + deltaAccountZero;
         }
@@ -419,8 +421,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         mapping(uint256 => uint128[EPOCHS_PER_SLOT]) storage storageAmounts = distributions[rewarded][reward].amounts;
 
         for (uint48 i = 0; i < amounts.length; ++i) {
-            // safe against overflow because the total registered amount is at most
-            // type(uint144).max / SCALER < type(uint128).max
+            // Overflow safe because `totalRegistered <= type(uint144).max / SCALER < type(uint128).max`.
             unchecked {
                 storageAmounts[(startEpoch + i) / EPOCHS_PER_SLOT][(startEpoch + i) % EPOCHS_PER_SLOT] += amounts[i];
             }
@@ -486,8 +487,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         accountStorage.earned[reward] = accountEarned;
 
         // If there were excess rewards, allocate them to address(0).
-        // Safe against overflow because the total registered amount is at most type(uint144).max / SCALER which is less
-        // than type(uint112).max.
+        // Overflow safe because `totalRegistered <= type(uint144).max / SCALER < type(uint112).max`.
         if (deltaAccountZero != 0) {
             accounts[address(0)][rewarded].earned[reward].claimable += deltaAccountZero;
         }
@@ -513,11 +513,11 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         if (!forfeitRecentReward) {
             // Get the start and end epochs based on the last updated timestamp of the distribution.
             uint48 epochStart = getEpoch(lastUpdated);
-            uint48 epochEnd = currentEpoch();
+            uint48 epochEnd = currentEpoch() + 1;
             uint256 delta;
 
             // Calculate the amount of tokens since the last update that should be distributed.
-            for (uint48 epoch = epochStart; epoch <= epochEnd; ++epoch) {
+            for (uint48 epoch = epochStart; epoch < epochEnd; ++epoch) {
                 uint256 amount = distribution.amounts[epoch / EPOCHS_PER_SLOT][epoch % EPOCHS_PER_SLOT];
                 delta += SCALER * _timeElapsedInEpoch(epoch, lastUpdated) * amount / EPOCH_DURATION;
             }
@@ -526,12 +526,10 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             // rewards, accrue them to address(0). Otherwise, some portion of the rewards might get lost.
             uint256 totalEligible = distribution.totalEligible;
             if (totalEligible == 0) {
-                // Safe against overflow because the total registered amount is at most type(uint144).max / SCALER which
-                // is less than type(uint112).max.
+                // Overflow safe because `totalRegistered <= type(uint144).max / SCALER < type(uint112).max`.
                 deltaAccountZero = uint112(delta / SCALER);
             } else {
-                // Safe against overflow because the total registered amount multiplied by the SCALER must be less than
-                // type(uint144).max. This is ensured by the registerReward function.
+                // Overflow safe because `totalRegistered <= type(uint144).max / SCALER`.
                 accumulator += uint144(delta / totalEligible);
             }
 
@@ -539,14 +537,13 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             lastUpdated = uint48(block.timestamp);
         }
 
-        // Update account's earned amount.
-        // Safe against overflow because the total registered amount is at most type(uint144).max / SCALER which is less
-        // than type(uint112).max.
+        // Update the account's earned amount.
+        // Overflow safe because `totalRegistered <= type(uint144).max / SCALER < type(uint112).max`.
         accountEarned.claimable +=
             uint112(uint256(accumulator - accountEarned.accumulator) * currentAccountBalance / SCALER);
 
-        // Snapshot new accumulator value. Downcasting is safe here because SCALER * totalRegistered is less than
-        // type(uint144).max
+        // Snapshot new accumulator value.
+        // Downcasting is safe because the `total registered amount <= type(uint144).max / SCALER`.
         accountEarned.accumulator = uint144(accumulator);
     }
 

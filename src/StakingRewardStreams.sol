@@ -9,7 +9,7 @@ import {IStakingRewardStreams} from "./interfaces/IRewardStreams.sol";
 
 /// @title StakingRewardStreams
 /// @author Euler Labs (https://www.eulerlabs.com/)
-/// @notice This contract inherits from BaseRewardStreams and implements IStakingRewardStreams interface.
+/// @notice This contract inherits from `BaseRewardStreams` and implements `IStakingRewardStreams`.
 /// It allows for the rewards to be distributed to the rewarded token holders who have staked it.
 contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
     using SafeERC20 for IERC20;
@@ -49,7 +49,7 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
             address reward = rewards[i];
             DistributionStorage storage distributionStorage = distributions[rewarded][reward];
 
-            // We allocate rewards always before updating any balances
+            // We allocate rewards always before updating any balances.
             updateRewardInternal(distributionStorage, accountStorage, rewarded, reward, currentAccountBalance, false);
 
             distributionStorage.totalEligible += amount;
@@ -92,7 +92,7 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
             address reward = rewards[i];
             DistributionStorage storage distributionStorage = distributions[rewarded][reward];
 
-            // We allocate rewards always before updating any balances
+            // We allocate rewards always before updating any balances.
             updateRewardInternal(
                 distributionStorage, accountStorage, rewarded, reward, currentAccountBalance, forfeitRecentReward
             );

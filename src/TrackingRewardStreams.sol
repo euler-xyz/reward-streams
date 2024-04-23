@@ -8,13 +8,13 @@ import {ITrackingRewardStreams} from "./interfaces/IRewardStreams.sol";
 
 /// @title TrackingRewardStreams
 /// @author Euler Labs (https://www.eulerlabs.com/)
-/// @notice This contract inherits from BaseRewardStreams and implements ITrackingRewardStreams interface. It
-/// allows for the rewards to be distributed to the rewarded token holders without a need to stake the shares. The
-/// rewarded token contract must be compatible with the Balance Forwarder interface and the balanceTrackerHook function.
-/// The balanceTrackerHook must be called with:
-/// - the account's new balance when account's balance changes
-/// - the current account's balance when the balance forwarding is enabled
-/// - the account's balance of 0 when the balance forwarding is disabled
+/// @notice This contract inherits from `BaseRewardStreams` and implements `ITrackingRewardStreams`.
+/// It allows for the rewards to be distributed to the rewarded token holders without requiring explicit staking.
+/// The rewarded token contract must implement `IBalanceTracker` and the `balanceTrackerHook` function.
+/// `balanceTrackerHook` must be called with:
+/// - the account's new balance when account's balance changes,
+/// - the current account's balance when the balance forwarding is enabled,
+/// - the account's balance of 0 when the balance forwarding is disabled.
 contract TrackingRewardStreams is BaseRewardStreams, ITrackingRewardStreams {
     using Set for SetStorage;
 
@@ -41,7 +41,7 @@ contract TrackingRewardStreams is BaseRewardStreams, ITrackingRewardStreams {
             address reward = rewards[i];
             DistributionStorage storage distributionStorage = distributions[rewarded][reward];
 
-            // We allocate rewards always before updating any balances
+            // We allocate rewards always before updating any balances.
             updateRewardInternal(
                 distributionStorage, accountStorage, rewarded, reward, currentAccountBalance, forfeitRecentReward
             );
