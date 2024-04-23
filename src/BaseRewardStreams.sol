@@ -517,7 +517,6 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         if (deltaAccountZero != 0) {
             accounts[address(0)][rewarded].earned[reward].claimable += deltaAccountZero;
         }
-        // accounts[account][rewarded].earned[reward] = accountEarned;
     }
 
     /// @notice Computes updated data for a specific account, rewarded token, and reward token.
