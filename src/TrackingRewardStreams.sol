@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-pragma solidity ^0.8.24;
+pragma solidity 0.8.24;
 
 import {SafeERC20, IERC20} from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import {EVCUtil, IEVC} from "evc/utils/EVCUtil.sol";
@@ -38,7 +38,7 @@ contract TrackingRewardStreams is BaseRewardStreams, ITrackingRewardStreams {
         uint256 currentAccountBalance = accountBalances[account][rewarded];
         address[] memory rewardsArray = accountEnabledRewards[account][rewarded].get();
 
-        for (uint256 i; i < rewardsArray.length; ++i) {
+        for (uint256 i = 0; i < rewardsArray.length; ++i) {
             address reward = rewardsArray[i];
             uint256 currentTotalEligible = distributionTotals[rewarded][reward].totalEligible;
 
