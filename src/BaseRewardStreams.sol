@@ -189,12 +189,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         uint256 currentAccountBalance = accountStorage.enabledRewards.contains(reward) ? accountStorage.balance : 0;
 
         updateRewardInternal(
-            accountStorage,
-            rewarded,
-            reward,
-            distributions[rewarded][reward].totalEligible,
-            currentAccountBalance,
-            false
+            distributions[rewarded][reward], accountStorage, rewarded, reward, currentAccountBalance, false
         );
     }
 
@@ -217,10 +212,10 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         uint256 currentAccountBalance = accountStorage.enabledRewards.contains(reward) ? accountStorage.balance : 0;
 
         updateRewardInternal(
+            distributions[rewarded][reward],
             accountStorage,
             rewarded,
             reward,
-            distributions[rewarded][reward].totalEligible,
             currentAccountBalance,
             forfeitRecentReward
         );
@@ -256,14 +251,13 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             }
 
             DistributionStorage storage distributionStorage = distributions[rewarded][reward];
-            uint256 currentTotalEligible = distributionStorage.totalEligible;
             uint256 currentAccountBalance = accountStorage.balance;
 
             // We pass zero as `currentAccountBalance` to not distribute rewards for the period before the account
             // enabled them.
-            updateRewardInternal(accountStorage, rewarded, reward, currentTotalEligible, 0, false);
+            updateRewardInternal(distributionStorage, accountStorage, rewarded, reward, 0, false);
 
-            distributionStorage.totalEligible = currentTotalEligible + currentAccountBalance;
+            distributionStorage.totalEligible += currentAccountBalance;
 
             emit RewardEnabled(msgSender, rewarded, reward);
         }
@@ -278,14 +272,13 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         AccountStorage storage accountStorage = accounts[msgSender][rewarded];
         if (accountStorage.enabledRewards.remove(reward)) {
             DistributionStorage storage distributionStorage = distributions[rewarded][reward];
-            uint256 currentTotalEligible = distributionStorage.totalEligible;
             uint256 currentAccountBalance = accountStorage.balance;
 
             updateRewardInternal(
-                accountStorage, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward
+                distributionStorage, accountStorage, rewarded, reward, currentAccountBalance, forfeitRecentReward
             );
 
-            distributionStorage.totalEligible = currentTotalEligible - currentAccountBalance;
+            distributionStorage.totalEligible -= currentAccountBalance;
 
             emit RewardDisabled(msgSender, rewarded, reward);
         }
@@ -308,19 +301,14 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         uint256 currentAccountBalance = accountStorage.enabledRewards.contains(reward) ? accountStorage.balance : 0;
 
         EarnStorage memory accountEarned = accountStorage.earned[reward];
-        uint112 deltaAccountZero = calculateRewards(
-            distributions[rewarded][reward],
-            accountEarned,
-            rewarded,
-            reward,
-            distributions[rewarded][reward].totalEligible,
-            currentAccountBalance,
-            forfeitRecentReward
+        DistributionStorage storage distributionStorage = distributions[rewarded][reward];
+        (uint112 deltaAccountZero,,) = calculateRewards(
+            distributionStorage, accountEarned, rewarded, reward, currentAccountBalance, forfeitRecentReward
         );
 
         // If we have spillover rewards, we add them to address(0)
         if (account == address(0) && deltaAccountZero != 0) {
-            accountEarned.claimable += deltaAccountZero;
+            return accountEarned.claimable + deltaAccountZero;
         }
 
         return accountEarned.claimable;
@@ -475,34 +463,28 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @dev If required, this function artificially accumulates rewards for the address(0) to avoid loss of rewards
     /// that wouldn't be claimable by anyone else.
     /// @dev This function does not update total eligible amount or account balances.
+    /// @param distributionStorage Pointer to the storage of the distribution.
     /// @param accountStorage Pointer to the storage of the account.
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
-    /// @param currentTotalEligible The current total amount of rewarded token eligible to get the reward token.
     /// @param currentAccountBalance The current rewarded token balance of the account.
     /// @param forfeitRecentReward Whether to forfeit the recent rewards and not update the accumulator.
     function updateRewardInternal(
+        DistributionStorage storage distributionStorage,
         AccountStorage storage accountStorage,
         address rewarded,
         address reward,
-        uint256 currentTotalEligible,
         uint256 currentAccountBalance,
         bool forfeitRecentReward
     ) internal virtual {
-        DistributionStorage memory distribution = distributions[rewarded][reward];
         EarnStorage memory accountEarned = accountStorage.earned[reward];
 
-        uint112 deltaAccountZero = calculateRewards(
-            distribution,
-            accountEarned,
-            rewarded,
-            reward,
-            currentTotalEligible,
-            currentAccountBalance,
-            forfeitRecentReward
+        (uint112 deltaAccountZero, uint48 lastUpdated, uint208 accumulator) = calculateRewards(
+            distributionStorage, accountEarned, rewarded, reward, currentAccountBalance, forfeitRecentReward
         );
 
-        distributions[rewarded][reward] = distribution;
+        distributionStorage.lastUpdated = lastUpdated;
+        distributionStorage.accumulator = accumulator;
         accountStorage.earned[reward] = accountEarned;
 
         // If there were excess rewards, allocate them to address(0).
@@ -518,27 +500,24 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @param accountEarned The account earned storage memory, which is modified by this function.
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
-    /// @param currentTotalEligible The current total amount of rewarded token eligible to get the reward token.
     /// @param currentAccountBalance The current rewarded token balance of the account.
     /// @param forfeitRecentReward Whether to forfeit the recent rewards and not update the accumulator.
     /// @return deltaAccountZero Amount to be credited to address(0) in case rewards were to be lost.
     function calculateRewards(
-        DistributionStorage memory distribution,
+        DistributionStorage storage distribution,
         EarnStorage memory accountEarned,
         address rewarded,
         address reward,
-        uint256 currentTotalEligible,
         uint256 currentAccountBalance,
         bool forfeitRecentReward
-    ) internal view virtual returns (uint112 deltaAccountZero) {
+    ) internal view virtual returns (uint112 deltaAccountZero, uint48 lastUpdated, uint208 accumulator) {
         // If the distribution is not initialized, return.
-        if (distribution.lastUpdated == 0) {
-            return 0;
-        }
+        lastUpdated = distribution.lastUpdated;
+        accumulator = distribution.accumulator;
+        if (lastUpdated == 0) return (0, lastUpdated, accumulator);
 
         if (!forfeitRecentReward) {
             // Get the start and end epochs based on the last updated timestamp of the distribution.
-            uint48 lastUpdated = distribution.lastUpdated;
             uint48 epochStart = getEpoch(lastUpdated);
             uint48 epochEnd = currentEpoch();
             uint256 delta;
@@ -551,29 +530,30 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
 
             // Increase the accumulator scaled by the total eligible amount earning reward. In case nobody earns
             // rewards, accrue them to address(0). Otherwise, some portion of the rewards might get lost.
-            if (currentTotalEligible == 0) {
+            uint256 totalEligible = distribution.totalEligible;
+            if (totalEligible == 0) {
                 // Safe against overflow because the total registered amount is at most type(uint144).max / SCALER which
                 // is less than type(uint112).max.
                 deltaAccountZero = uint112(delta / SCALER);
             } else {
                 // Safe against overflow because the total registered amount multiplied by the SCALER must be less than
                 // type(uint144).max. This is ensured by the registerReward function.
-                distribution.accumulator += uint144(delta / currentTotalEligible);
+                accumulator += uint144(delta / totalEligible);
             }
 
             // Snapshot the timestamp.
-            distribution.lastUpdated = uint48(block.timestamp);
+            lastUpdated = uint48(block.timestamp);
         }
 
         // Update account's earned amount.
         // Safe against overflow because the total registered amount is at most type(uint144).max / SCALER which is less
         // than type(uint112).max.
         accountEarned.claimable +=
-            uint112(uint256(distribution.accumulator - accountEarned.accumulator) * currentAccountBalance / SCALER);
+            uint112(uint256(accumulator - accountEarned.accumulator) * currentAccountBalance / SCALER);
 
         // Snapshot new accumulator value. Downcasting is safe here because SCALER * totalRegistered is less than
         // type(uint144).max
-        accountEarned.accumulator = uint144(distribution.accumulator);
+        accountEarned.accumulator = uint144(accumulator);
     }
 
     /// @notice Transfers a specified amount of a token from a given address to this contract.

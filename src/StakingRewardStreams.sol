@@ -47,12 +47,12 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
 
         for (uint256 i = 0; i < rewards.length; ++i) {
             address reward = rewards[i];
-            uint256 currentTotalEligible = distributions[rewarded][reward].totalEligible;
+            DistributionStorage storage distributionStorage = distributions[rewarded][reward];
 
             // We allocate rewards always before updating any balances
-            updateRewardInternal(accountStorage, rewarded, reward, currentTotalEligible, currentAccountBalance, false);
+            updateRewardInternal(distributionStorage, accountStorage, rewarded, reward, currentAccountBalance, false);
 
-            distributions[rewarded][reward].totalEligible = currentTotalEligible + amount;
+            distributionStorage.totalEligible += amount;
         }
 
         accountStorage.balance = currentAccountBalance + amount;
@@ -90,14 +90,14 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
 
         for (uint256 i = 0; i < rewards.length; ++i) {
             address reward = rewards[i];
-            uint256 currentTotalEligible = distributions[rewarded][reward].totalEligible;
+            DistributionStorage storage distributionStorage = distributions[rewarded][reward];
 
             // We allocate rewards always before updating any balances
             updateRewardInternal(
-                accountStorage, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward
+                distributionStorage, accountStorage, rewarded, reward, currentAccountBalance, forfeitRecentReward
             );
 
-            distributions[rewarded][reward].totalEligible = currentTotalEligible - amount;
+            distributionStorage.totalEligible -= amount;
         }
 
         accountStorage.balance = currentAccountBalance - amount;

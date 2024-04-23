@@ -39,15 +39,15 @@ contract TrackingRewardStreams is BaseRewardStreams, ITrackingRewardStreams {
 
         for (uint256 i = 0; i < rewards.length; ++i) {
             address reward = rewards[i];
-            uint256 currentTotalEligible = distributions[rewarded][reward].totalEligible;
+            DistributionStorage storage distributionStorage = distributions[rewarded][reward];
 
             // We allocate rewards always before updating any balances
             updateRewardInternal(
-                accountStorage, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward
+                distributionStorage, accountStorage, rewarded, reward, currentAccountBalance, forfeitRecentReward
             );
 
-            distributions[rewarded][reward].totalEligible =
-                currentTotalEligible + newAccountBalance - currentAccountBalance;
+            distributionStorage.totalEligible =
+                distributionStorage.totalEligible + newAccountBalance - currentAccountBalance;
         }
 
         accountStorage.balance = newAccountBalance;
