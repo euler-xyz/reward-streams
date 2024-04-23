@@ -26,12 +26,16 @@ contract BaseRewardStreamsHarness is BaseRewardStreams {
         distributionData[rewarded][reward] = distributionStorage;
     }
 
-    function getDistributionTotals(address rewarded, address reward) external view returns (TotalsStorage memory) {
-        return distributionTotals[rewarded][reward];
+    function getDistributionTotals(address rewarded, address reward) external view returns (uint256, uint128, uint128) {
+        Distribution storage distribution = distributions[rewarded][reward];
+        return (distribution.totalEligible, distribution.totalRegistered, distribution.totalClaimed);
     }
 
-    function setDistributionTotals(address rewarded, address reward, TotalsStorage calldata totalsStorage) external {
-        distributionTotals[rewarded][reward] = totalsStorage;
+    function setDistributionTotals(address rewarded, address reward, uint256 totalEligible, uint128 totalRegistered, uint128 totalClaimed) external {
+        Distribution storage distribution = distributions[rewarded][reward];
+        distribution.totalEligible = totalEligible;
+        distribution.totalRegistered = totalRegistered;
+        distribution.totalClaimed = totalClaimed;
     }
 
     function getAccountBalance(address account, address rewarded) external view returns (uint256) {

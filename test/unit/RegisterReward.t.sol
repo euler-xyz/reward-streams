@@ -106,9 +106,7 @@ contract RegisterRewardTest is Test {
         );
         assertEq(
             abi.encode(distributor.getDistributionTotals(rewarded, reward)),
-            abi.encode(
-                BaseRewardStreams.TotalsStorage({totalRegistered: totalAmount, totalClaimed: 0, totalEligible: 0})
-            )
+            abi.encode(0, totalAmount, 0);
         );
 
         // verify that the distribution amounts storage was properly updated
@@ -149,13 +147,7 @@ contract RegisterRewardTest is Test {
         );
         assertEq(
             abi.encode(distributor.getDistributionTotals(rewarded, reward)),
-            abi.encode(
-                BaseRewardStreams.TotalsStorage({
-                    totalRegistered: uint128(preBalance) + totalAmount,
-                    totalClaimed: 0,
-                    totalEligible: 0
-                })
-            )
+            abi.encode(0, uint128(preBalance) + totalAmount, 0)
         );
 
         // verify that the distribution amounts storage was properly updated
@@ -204,13 +196,7 @@ contract RegisterRewardTest is Test {
         );
         assertEq(
             abi.encode(distributor.getDistributionTotals(rewarded, reward)),
-            abi.encode(
-                BaseRewardStreams.TotalsStorage({
-                    totalRegistered: uint128(preBalance) + totalAmount,
-                    totalClaimed: 0,
-                    totalEligible: 0
-                })
-            )
+            abi.encode(0, uint128(preBalance) + totalAmount, 0);
         );
 
         // verify that the distribution amounts storage was properly updated
@@ -282,14 +268,10 @@ contract RegisterRewardTest is Test {
         // initialize the distribution data and set the total registered amount to the max value
         BaseRewardStreams.DistributionStorage memory distribution =
             BaseRewardStreams.DistributionStorage({lastUpdated: uint48(1), accumulator: 0});
-        BaseRewardStreams.TotalsStorage memory totals = BaseRewardStreams.TotalsStorage({
-            totalRegistered: uint128(type(uint144).max / 1e12),
-            totalClaimed: 0,
-            totalEligible: 0
-        });
+        uint128 totalRegistered = uint128(type(uint144).max / 1e12);
 
         distributor.setDistributionData(rewarded, reward, distribution);
-        distributor.setDistributionTotals(rewarded, reward, totals);
+        distributor.setDistributionTotals(rewarded, reward, 0, totalRegistered, 0);
 
         vm.startPrank(seeder);
         vm.expectRevert(BaseRewardStreams.AccumulatorOverflow.selector);
@@ -297,8 +279,8 @@ contract RegisterRewardTest is Test {
         vm.stopPrank();
 
         // accumulator doesn't overflow if the total registered amount is less than the max value
-        totals.totalRegistered -= 1;
-        distributor.setDistributionTotals(rewarded, reward, totals);
+        totalRegistered -= 1;
+        distributor.setDistributionTotals(rewarded, reward, 0, totalRegistered, 0);
 
         vm.startPrank(seeder);
         distributor.registerReward(rewarded, reward, 0, amounts);

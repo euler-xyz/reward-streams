@@ -2309,17 +2309,11 @@ contract ScenarioTest is Test {
         vm.assume(totalClaimed <= totalRegistered);
         claimable = uint112(bound(claimable, totalRegistered - totalClaimed + 1, type(uint112).max));
 
-        BaseRewardStreams.TotalsStorage memory totalsStorage = BaseRewardStreams.TotalsStorage({
-            totalEligible: 0,
-            totalRegistered: totalRegistered,
-            totalClaimed: totalClaimed
-        });
-
         BaseRewardStreams.EarnStorage memory earnStorage =
             BaseRewardStreams.EarnStorage({claimable: claimable, accumulator: 0});
 
-        stakingDistributor.setDistributionTotals(_rewarded, _reward, totalsStorage);
-        trackingDistributor.setDistributionTotals(_rewarded, _reward, totalsStorage);
+        stakingDistributor.setDistributionTotals(_rewarded, _reward, 0, totalRegistered, totalClaimed);
+        trackingDistributor.setDistributionTotals(_rewarded, _reward, 0, totalRegistered, totalClaimed);
 
         stakingDistributor.setAccountEarnedData(_account, _rewarded, _reward, earnStorage);
         trackingDistributor.setAccountEarnedData(_account, _rewarded, _reward, earnStorage);

@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import {SafeERC20, IERC20} from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
-import {EVCUtil, IEVC} from "evc/utils/EVCUtil.sol";
 import {Set, SetStorage} from "evc/Set.sol";
 import {BaseRewardStreams} from "./BaseRewardStreams.sol";
 import {ITrackingRewardStreams} from "./interfaces/IRewardStreams.sol";
@@ -37,15 +35,15 @@ contract TrackingRewardStreams is BaseRewardStreams, ITrackingRewardStreams {
         address rewarded = msg.sender;
         AccountStorage storage accountStore = accountStorage[account][rewarded];
         uint256 currentAccountBalance = accountStore.balance;
-        address[] memory rewardsArray = accountStore.enabledRewards.get();
+        address[] memory rewards = accountStore.enabledRewards.get();
 
-        for (uint256 i; i < rewardsArray.length; ++i) {
-            address reward = rewardsArray[i];
+        for (uint256 i; i < rewards.length; ++i) {
+            address reward = rewards[i];
             uint256 currentTotalEligible = distributionTotals[rewarded][reward].totalEligible;
 
             // We allocate rewards always before updating any balances
             updateRewardInternal(
-                account, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward
+                accountStore, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward
             );
 
             distributionTotals[rewarded][reward].totalEligible =

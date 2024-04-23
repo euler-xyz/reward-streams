@@ -3,7 +3,6 @@
 pragma solidity ^0.8.24;
 
 import {SafeERC20, IERC20} from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
-import {EVCUtil, IEVC} from "evc/utils/EVCUtil.sol";
 import {Set, SetStorage} from "evc/Set.sol";
 import {BaseRewardStreams} from "./BaseRewardStreams.sol";
 import {IStakingRewardStreams} from "./interfaces/IRewardStreams.sol";
@@ -48,10 +47,11 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
 
         for (uint256 i; i < rewardsArray.length; ++i) {
             address reward = rewardsArray[i];
-            uint256 currentTotalEligible = distributionTotals[rewarded][reward].totalEligible;
+            Distribution storage distribution = distributions[rewarded][reward];
+            uint256 currentTotalEligible = distribution.totalEligible;
 
             // We allocate rewards always before updating any balances
-            updateRewardInternal(msgSender, rewarded, reward, currentTotalEligible, currentAccountBalance, false);
+            updateRewardInternal(account, rewarded, reward, currentTotalEligible, currentAccountBalance, false);
 
             distributionTotals[rewarded][reward].totalEligible = currentTotalEligible + amount;
         }
@@ -95,7 +95,7 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
 
             // We allocate rewards always before updating any balances
             updateRewardInternal(
-                msgSender, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward
+                account, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward
             );
 
             distributionTotals[rewarded][reward].totalEligible = currentTotalEligible - amount;
