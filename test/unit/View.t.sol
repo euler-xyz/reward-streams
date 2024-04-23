@@ -56,28 +56,19 @@ contract ViewTest is Test {
         assertEq(distributor.rewardAmount(rewarded, reward, epoch), amount);
     }
 
-    function test_totalRewardedEligible(address rewarded, address reward, uint256 total) external {
-        BaseRewardStreams.TotalsStorage memory totals;
-        totals.totalEligible = total;
-
-        distributor.setDistributionTotals(rewarded, reward, totals);
-        assertEq(distributor.totalRewardedEligible(rewarded, reward), totals.totalEligible);
+    function test_totalRewardedEligible(address rewarded, address reward, uint256 totalEligible) external {
+        distributor.setDistributionTotals(rewarded, reward, totalEligible, 0, 0);
+        assertEq(distributor.totalRewardedEligible(rewarded, reward), totalEligible);
     }
 
-    function test_totalRewardRegistered(address rewarded, address reward, uint128 total) external {
-        BaseRewardStreams.TotalsStorage memory totals;
-        totals.totalRegistered = total;
-
-        distributor.setDistributionTotals(rewarded, reward, totals);
-        assertEq(distributor.totalRewardRegistered(rewarded, reward), totals.totalRegistered);
+    function test_totalRewardRegistered(address rewarded, address reward, uint128 totalRegistered) external {
+        distributor.setDistributionTotals(rewarded, reward, 0, totalRegistered, 0);
+        assertEq(distributor.totalRewardRegistered(rewarded, reward), totalRegistered);
     }
 
-    function test_totalRewardClaimed(address rewarded, address reward, uint128 total) external {
-        BaseRewardStreams.TotalsStorage memory totals;
-        totals.totalClaimed = total;
-
-        distributor.setDistributionTotals(rewarded, reward, totals);
-        assertEq(distributor.totalRewardClaimed(rewarded, reward), totals.totalClaimed);
+    function test_totalRewardClaimed(address rewarded, address reward, uint128 totalClaimed) external {
+        distributor.setDistributionTotals(rewarded, reward, 0, 0, totalClaimed);
+        assertEq(distributor.totalRewardClaimed(rewarded, reward), totalClaimed);
     }
 
     function test_Epoch(uint48 timestamp) external {

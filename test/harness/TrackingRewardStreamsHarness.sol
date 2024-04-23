@@ -16,7 +16,7 @@ contract TrackingRewardStreamsHarness is TrackingRewardStreams {
     }
 
     function getDistributionData(address rewarded, address reward) external view returns (DistributionStorage memory) {
-        return distributionData[rewarded][reward];
+        return distributions[rewarded][reward];
     }
 
     function setDistributionData(
@@ -24,15 +24,29 @@ contract TrackingRewardStreamsHarness is TrackingRewardStreams {
         address reward,
         DistributionStorage calldata distributionStorage
     ) external {
-        distributionData[rewarded][reward] = distributionStorage;
+        distributions[rewarded][reward] = distributionStorage;
     }
 
-    function getDistributionTotals(address rewarded, address reward) external view returns (TotalsStorage memory) {
-        return distributionTotals[rewarded][reward];
+    function getDistributionTotals(
+        address rewarded,
+        address reward
+    ) external view returns (uint256, uint128, uint128) {
+        DistributionStorage storage distributionStorage = distributions[rewarded][reward];
+        return
+            (distributionStorage.totalEligible, distributionStorage.totalRegistered, distributionStorage.totalClaimed);
     }
 
-    function setDistributionTotals(address rewarded, address reward, TotalsStorage calldata totalsStorage) external {
-        distributionTotals[rewarded][reward] = totalsStorage;
+    function setDistributionTotals(
+        address rewarded,
+        address reward,
+        uint256 totalEligible,
+        uint128 totalRegistered,
+        uint128 totalClaimed
+    ) external {
+        DistributionStorage storage distributionStorage = distributions[rewarded][reward];
+        distributionStorage.totalEligible = totalEligible;
+        distributionStorage.totalRegistered = totalRegistered;
+        distributionStorage.totalClaimed = totalClaimed;
     }
 
     function getAccountBalance(address account, address rewarded) external view returns (uint256) {
