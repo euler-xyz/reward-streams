@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-pragma solidity ^0.8.24;
+pragma solidity 0.8.24;
 
 import {ReentrancyGuard} from "openzeppelin-contracts/utils/ReentrancyGuard.sol";
 import {SafeERC20, IERC20} from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
@@ -158,7 +158,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
 
         // calculate the total amount to be distributed in this distribution scheme
         uint256 totalAmount;
-        for (uint256 i; i < rewardAmounts.length; ++i) {
+        for (uint256 i = 0; i < rewardAmounts.length; ++i) {
             totalAmount += rewardAmounts[i];
         }
 
@@ -186,7 +186,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         distribution.totalRegistered = uint128(totalRegistered);
 
         // store the amounts to be distributed
-        storeAmounts(rewarded, reward, startEpoch, rewardAmounts);
+        increaseRewardAmounts(rewarded, reward, startEpoch, rewardAmounts);
 
         // transfer the total amount to be distributed to the contract
         address msgSender = _msgSender();
@@ -381,7 +381,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         address reward,
         uint48 epoch
     ) public view virtual override returns (uint256) {
-        return distributionAmounts[rewarded][reward][_storageIndex(epoch)][_epochIndex(epoch)];
+        return distributionAmounts[rewarded][reward][epoch / EPOCHS_PER_SLOT][epoch % EPOCHS_PER_SLOT];
     }
 
     /// @notice Returns the total supply of the rewarded token enabled and eligible to receive the reward token.
@@ -436,36 +436,25 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         return uint48(getEpochStartTimestamp(epoch) + EPOCH_DURATION);
     }
 
-    /// @notice Stores the reward token distribution amounts for a given rewarded token.
+    /// @notice Increases the reward token amounts for a specific rewarded token.
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
-    /// @param startEpoch The starting epoch for the distribution.
-    /// @param amountsToBeStored The reward token amounts to be stored for each epoch.
-    function storeAmounts(
+    /// @param startEpoch The starting epoch to increase the reward token amount for.
+    /// @param amounts The token amounts to increase by.
+    function increaseRewardAmounts(
         address rewarded,
         address reward,
         uint48 startEpoch,
-        uint128[] memory amountsToBeStored
+        uint128[] memory amounts
     ) internal virtual {
-        uint256 length = amountsToBeStored.length;
-        uint256 startStorageIndex = _storageIndex(startEpoch);
-        uint256 endStorageIndex = _storageIndex(startEpoch + length - 1);
-
         mapping(uint256 => uint128[EPOCHS_PER_SLOT]) storage storageAmounts = distributionAmounts[rewarded][reward];
-        uint256 memoryIndex;
-        uint128[EPOCHS_PER_SLOT] memory memoryAmounts;
 
-        for (uint256 i = startStorageIndex; i <= endStorageIndex; ++i) {
-            memoryAmounts = storageAmounts[i];
-
-            // assign amounts to the appropriate indices based on the epoch
-            for (uint256 j = _epochIndex(startEpoch + memoryIndex); j < EPOCHS_PER_SLOT && memoryIndex < length; ++j) {
-                unchecked {
-                    memoryAmounts[j] += amountsToBeStored[memoryIndex++];
-                }
+        for (uint48 i = 0; i < amounts.length; ++i) {
+            // safe against overflow because the total registered amount is at most
+            // type(uint144).max / SCALER < type(uint128).max
+            unchecked {
+                storageAmounts[(startEpoch + i) / EPOCHS_PER_SLOT][(startEpoch + i) % EPOCHS_PER_SLOT] += amounts[i];
             }
-
-            storageAmounts[i] = memoryAmounts;
         }
     }
 
@@ -569,18 +558,12 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             uint48 lastUpdated = distribution.lastUpdated;
             uint48 epochStart = getEpoch(lastUpdated);
             uint48 epochEnd = currentEpoch();
-            uint128[EPOCHS_PER_SLOT] memory amounts;
             uint256 delta;
 
             // Calculate the amount of tokens since the last update that should be distributed.
             for (uint48 i = epochStart; i <= epochEnd; ++i) {
-                // Read the storage slot only every other epoch or if it's the start epoch.
-                uint256 epochIndex = _epochIndex(i);
-                if (epochIndex == 0 || i == epochStart) {
-                    amounts = distributionAmounts[rewarded][reward][_storageIndex(i)];
-                }
-
-                delta += SCALER * _timeElapsedInEpoch(i, lastUpdated) * amounts[epochIndex] / EPOCH_DURATION;
+                delta +=
+                    SCALER * _timeElapsedInEpoch(i, lastUpdated) * rewardAmount(rewarded, reward, i) / EPOCH_DURATION;
             }
 
             // Increase the accumulator scaled by the total eligible amount earning reward. In case nobody earns
@@ -624,20 +607,6 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         if (token.balanceOf(address(this)) - preBalance != amount) {
             revert InvalidAmount();
         }
-    }
-
-    /// @notice Returns the storage index for a given epoch.
-    /// @param epoch The epoch to get the storage index for.
-    /// @return The storage index for the given epoch.
-    function _storageIndex(uint256 epoch) internal pure returns (uint256) {
-        return epoch / EPOCHS_PER_SLOT;
-    }
-
-    /// @notice Returns the epoch index for a given epoch.
-    /// @param epoch The epoch to get the epoch index for.
-    /// @return The epoch index for the given epoch.
-    function _epochIndex(uint256 epoch) internal pure returns (uint256) {
-        return epoch % EPOCHS_PER_SLOT;
     }
 
     /// @notice Calculates the time elapsed within a given epoch.

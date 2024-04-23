@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity ^0.8.24;
+pragma solidity 0.8.24;
 
 import {SafeERC20, IERC20} from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../src/TrackingRewardStreams.sol";
@@ -12,7 +12,7 @@ contract TrackingRewardStreamsHarness is TrackingRewardStreams {
     constructor(address evc, uint48 epochDuration) TrackingRewardStreams(evc, epochDuration) {}
 
     function setDistributionAmount(address rewarded, address reward, uint48 epoch, uint128 amount) external {
-        distributionAmounts[rewarded][reward][_storageIndex(epoch)][_epochIndex(epoch)] = amount;
+        distributionAmounts[rewarded][reward][epoch / EPOCHS_PER_SLOT][epoch % EPOCHS_PER_SLOT] = amount;
     }
 
     function getDistributionData(address rewarded, address reward) external view returns (DistributionStorage memory) {

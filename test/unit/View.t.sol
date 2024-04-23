@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 import "evc/EthereumVaultConnector.sol";
 import "../harness/BaseRewardStreamsHarness.sol";
 import {MockERC20} from "../utils/MockERC20.sol";
 import {MockController} from "../utils/MockController.sol";
+import {boundAddr} from "../utils/TestUtils.sol";
 
 contract ViewTest is Test {
     EthereumVaultConnector internal evc;
@@ -18,6 +19,8 @@ contract ViewTest is Test {
     }
 
     function test_EnabledRewards(address account, address rewarded, uint8 n, bytes memory seed) external {
+        account = boundAddr(account);
+        rewarded = boundAddr(rewarded);
         n = uint8(bound(n, 1, 5));
 
         vm.startPrank(account);

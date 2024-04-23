@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-pragma solidity ^0.8.24;
+pragma solidity 0.8.24;
 
 import {Set, SetStorage} from "evc/Set.sol";
 import {BaseRewardStreams} from "./BaseRewardStreams.sol";
@@ -37,8 +37,8 @@ contract TrackingRewardStreams is BaseRewardStreams, ITrackingRewardStreams {
         uint256 currentAccountBalance = accountStore.balance;
         address[] memory rewards = accountStore.enabledRewards.get();
 
-        for (uint256 i; i < rewards.length; ++i) {
-            address reward = rewards[i];
+        for (uint256 i = 0; i < rewards.length; ++i) {
+            address reward = rewardsArray[i];
             uint256 currentTotalEligible = distributionTotals[rewarded][reward].totalEligible;
 
             // We allocate rewards always before updating any balances
