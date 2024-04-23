@@ -11,19 +11,48 @@ contract BaseRewardStreamsHarness is BaseRewardStreams {
     constructor(address evc, uint48 epochDuration) BaseRewardStreams(evc, epochDuration) {}
 
     function setDistributionAmount(address rewarded, address reward, uint48 epoch, uint128 amount) external {
-        distributionAmounts[rewarded][reward][epoch / EPOCHS_PER_SLOT][epoch % EPOCHS_PER_SLOT] = amount;
+        distributions[rewarded][reward].amounts[epoch / EPOCHS_PER_SLOT][epoch % EPOCHS_PER_SLOT] = amount;
     }
 
-    function getDistributionData(address rewarded, address reward) external view returns (DistributionStorage memory) {
-        return distributions[rewarded][reward];
+    function getDistributionData(
+        address rewarded,
+        address reward
+    )
+        external
+        view
+        returns (
+            uint48, /* lastUpdated */
+            uint208, /* accumulator */
+            uint256, /* totalEligible */
+            uint128, /* totalRegistered */
+            uint128 /* totalClaimed */
+        )
+    {
+        DistributionStorage storage distributionStorage = distributions[rewarded][reward];
+        return (
+            distributionStorage.lastUpdated,
+            distributionStorage.accumulator,
+            distributionStorage.totalEligible,
+            distributionStorage.totalRegistered,
+            distributionStorage.totalClaimed
+        );
     }
 
     function setDistributionData(
         address rewarded,
         address reward,
-        DistributionStorage memory distributionStorage
+        uint48 lastUpdated,
+        uint208 accumulator,
+        uint256 totalEligible,
+        uint128 totalRegistered,
+        uint128 totalClaimed
     ) external {
-        distributions[rewarded][reward] = distributionStorage;
+        DistributionStorage storage distributionStorage = distributions[rewarded][reward];
+        distributionStorage.lastUpdated = lastUpdated;
+        distributionStorage.accumulator = accumulator;
+        distributionStorage.totalEligible = totalEligible;
+        distributionStorage.totalRegistered = totalRegistered;
+        distributionStorage.totalClaimed = totalClaimed;
     }
 
     function getDistributionTotals(

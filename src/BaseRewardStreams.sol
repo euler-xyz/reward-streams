@@ -73,6 +73,8 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         uint128 totalRegistered;
         /// @notice Total reward token that have been transferred out from this contract for rewards.
         uint128 totalClaimed;
+        /// @notice Distribution amounts per epoch.
+        mapping(uint256 storageIndex => uint128[EPOCHS_PER_SLOT]) amounts;
     }
 
     /// @notice Struct to store earned data.
@@ -92,9 +94,6 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         /// @notice The accont's earnins per reward token.
         mapping(address reward => EarnStorage) earned;
     }
-
-    mapping(address rewarded => mapping(address reward => mapping(uint256 storageIndex => uint128[EPOCHS_PER_SLOT])))
-        internal distributionAmounts;
 
     mapping(address rewarded => mapping(address reward => DistributionStorage)) internal distributions;
 
@@ -351,7 +350,8 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         address reward,
         uint48 epoch
     ) public view virtual override returns (uint256) {
-        return distributionAmounts[rewarded][reward][epoch / EPOCHS_PER_SLOT][epoch % EPOCHS_PER_SLOT];
+        DistributionStorage storage distributionStorage = distributions[rewarded][reward];
+        return distributionStorage.amounts[epoch / EPOCHS_PER_SLOT][epoch % EPOCHS_PER_SLOT];
     }
 
     /// @notice Returns the total supply of the rewarded token enabled and eligible to receive the reward token.
@@ -417,7 +417,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         uint48 startEpoch,
         uint128[] memory amounts
     ) internal virtual {
-        mapping(uint256 => uint128[EPOCHS_PER_SLOT]) storage storageAmounts = distributionAmounts[rewarded][reward];
+        mapping(uint256 => uint128[EPOCHS_PER_SLOT]) storage storageAmounts = distributions[rewarded][reward].amounts;
 
         for (uint48 i = 0; i < amounts.length; ++i) {
             // safe against overflow because the total registered amount is at most
