@@ -3,7 +3,6 @@
 pragma solidity 0.8.24;
 
 import {SafeERC20, IERC20} from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
-import {EVCUtil, IEVC} from "evc/utils/EVCUtil.sol";
 import {Set, SetStorage} from "evc/Set.sol";
 import {BaseRewardStreams} from "./BaseRewardStreams.sol";
 import {IStakingRewardStreams} from "./interfaces/IRewardStreams.sol";
@@ -42,11 +41,12 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
             revert InvalidAmount();
         }
 
-        uint256 currentAccountBalance = accountBalances[msgSender][rewarded];
-        address[] memory rewardsArray = accountEnabledRewards[msgSender][rewarded].get();
+        AccountStorage storage accountStorage = accounts[msgSender][rewarded];
+        uint256 currentAccountBalance = accountStorage.balance;
+        address[] memory rewards = accountStorage.enabledRewards.get();
 
-        for (uint256 i = 0; i < rewardsArray.length; ++i) {
-            address reward = rewardsArray[i];
+        for (uint256 i = 0; i < rewards.length; ++i) {
+            address reward = rewards[i];
             uint256 currentTotalEligible = distributionTotals[rewarded][reward].totalEligible;
 
             // We allocate rewards always before updating any balances
@@ -55,7 +55,7 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
             distributionTotals[rewarded][reward].totalEligible = currentTotalEligible + amount;
         }
 
-        accountBalances[msgSender][rewarded] = currentAccountBalance + amount;
+        accountStorage.balance = currentAccountBalance + amount;
 
         pullToken(IERC20(rewarded), msgSender, amount);
 
@@ -75,7 +75,8 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
         bool forfeitRecentReward
     ) external virtual override nonReentrant {
         address msgSender = _msgSender();
-        uint256 currentAccountBalance = accountBalances[msgSender][rewarded];
+        AccountStorage storage accountStorage = accounts[msgSender][rewarded];
+        uint256 currentAccountBalance = accountStorage.balance;
 
         if (amount == type(uint256).max) {
             amount = currentAccountBalance;
@@ -85,10 +86,10 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
             revert InvalidAmount();
         }
 
-        address[] memory rewardsArray = accountEnabledRewards[msgSender][rewarded].get();
+        address[] memory rewards = accountStorage.enabledRewards.get();
 
-        for (uint256 i = 0; i < rewardsArray.length; ++i) {
-            address reward = rewardsArray[i];
+        for (uint256 i = 0; i < rewards.length; ++i) {
+            address reward = rewards[i];
             uint256 currentTotalEligible = distributionTotals[rewarded][reward].totalEligible;
 
             // We allocate rewards always before updating any balances
@@ -99,7 +100,7 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
             distributionTotals[rewarded][reward].totalEligible = currentTotalEligible - amount;
         }
 
-        accountBalances[msgSender][rewarded] = currentAccountBalance - amount;
+        accountStorage.balance = currentAccountBalance - amount;
 
         IERC20(rewarded).safeTransfer(recipient, amount);
 

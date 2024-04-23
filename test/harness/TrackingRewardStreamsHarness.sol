@@ -2,6 +2,7 @@
 
 pragma solidity 0.8.24;
 
+import {SafeERC20, IERC20} from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../src/TrackingRewardStreams.sol";
 
 contract TrackingRewardStreamsHarness is TrackingRewardStreams {
@@ -35,15 +36,15 @@ contract TrackingRewardStreamsHarness is TrackingRewardStreams {
     }
 
     function getAccountBalance(address account, address rewarded) external view returns (uint256) {
-        return accountBalances[account][rewarded];
+        return accounts[account][rewarded].balance;
     }
 
     function setAccountBalance(address account, address rewarded, uint256 balance) external {
-        accountBalances[account][rewarded] = balance;
+        accounts[account][rewarded].balance = balance;
     }
 
     function insertReward(address account, address rewarded, address reward) external {
-        accountEnabledRewards[account][rewarded].insert(reward);
+        accounts[account][rewarded].enabledRewards.insert(reward);
     }
 
     function getAccountEarnedData(
@@ -51,15 +52,15 @@ contract TrackingRewardStreamsHarness is TrackingRewardStreams {
         address rewarded,
         address reward
     ) external view returns (EarnStorage memory) {
-        return accountEarnedData[account][rewarded][reward];
+        return accounts[account][rewarded].earned[reward];
     }
 
     function setAccountEarnedData(
         address account,
         address rewarded,
         address reward,
-        EarnStorage calldata earnStorage
+        EarnStorage memory earnStorage
     ) external {
-        accountEarnedData[account][rewarded][reward] = earnStorage;
+        accounts[account][rewarded].earned[reward] = earnStorage;
     }
 }

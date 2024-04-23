@@ -4,7 +4,7 @@ pragma solidity 0.8.24;
 
 import {ReentrancyGuard} from "openzeppelin-contracts/utils/ReentrancyGuard.sol";
 import {SafeERC20, IERC20} from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
-import {EVCUtil, IEVC} from "evc/utils/EVCUtil.sol";
+import {EVCUtil} from "evc/utils/EVCUtil.sol";
 import {Set, SetStorage} from "evc/Set.sol";
 import {IRewardStreams} from "./interfaces/IRewardStreams.sol";
 
@@ -93,10 +93,13 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     mapping(address rewarded => mapping(address reward => DistributionStorage)) internal distributionData;
     mapping(address rewarded => mapping(address reward => TotalsStorage)) internal distributionTotals;
 
-    mapping(address account => mapping(address rewarded => SetStorage)) internal accountEnabledRewards;
-    mapping(address account => mapping(address rewarded => uint256)) internal accountBalances;
-    mapping(address account => mapping(address rewarded => mapping(address reward => EarnStorage))) internal
-        accountEarnedData;
+    struct AccountStorage {
+        SetStorage enabledRewards;
+        uint256 balance;
+        mapping(address reward => EarnStorage) earned;
+    }
+
+    mapping(address account => mapping(address rewarded => AccountStorage)) internal accounts;
 
     /// @notice Constructor for the BaseRewardStreams contract.
     /// @param _evc The Ethereum Vault Connector contract.
@@ -184,8 +187,8 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         address msgSender = _msgSender();
 
         // If the account disables the rewards we pass an account balance of zero to not accrue any.
-        uint256 currentAccountBalance =
-            accountEnabledRewards[msgSender][rewarded].contains(reward) ? accountBalances[msgSender][rewarded] : 0;
+        AccountStorage storage accountStorage = accounts[msgSender][rewarded];
+        uint256 currentAccountBalance = accountStorage.enabledRewards.contains(reward) ? accountStorage.balance : 0;
 
         updateRewardInternal(
             msgSender,
@@ -212,8 +215,8 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         address msgSender = _msgSender();
 
         // If the account disables the rewards we pass an account balance of zero to not accrue any.
-        uint256 currentAccountBalance =
-            accountEnabledRewards[msgSender][rewarded].contains(reward) ? accountBalances[msgSender][rewarded] : 0;
+        AccountStorage storage accountStorage = accounts[msgSender][rewarded];
+        uint256 currentAccountBalance = accountStorage.enabledRewards.contains(reward) ? accountStorage.balance : 0;
 
         updateRewardInternal(
             msgSender,
@@ -246,16 +249,17 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @param reward The address of the reward token.
     function enableReward(address rewarded, address reward) external virtual override {
         address msgSender = _msgSender();
-        SetStorage storage setStorage = accountEnabledRewards[msgSender][rewarded];
+        AccountStorage storage accountStorage = accounts[msgSender][rewarded];
+        SetStorage storage accountEnabledRewards = accountStorage.enabledRewards;
 
-        if (setStorage.insert(reward)) {
-            if (setStorage.numElements > MAX_REWARDS_ENABLED) {
+        if (accountEnabledRewards.insert(reward)) {
+            if (accountEnabledRewards.numElements > MAX_REWARDS_ENABLED) {
                 revert TooManyRewardsEnabled();
             }
 
             TotalsStorage storage totalsStorage = distributionTotals[rewarded][reward];
             uint256 currentTotalEligible = totalsStorage.totalEligible;
-            uint256 currentAccountBalance = accountBalances[msgSender][rewarded];
+            uint256 currentAccountBalance = accountStorage.balance;
 
             // We pass zero as `currentAccountBalance` to not distribute rewards for the period before the account
             // enabled them.
@@ -273,11 +277,11 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @param forfeitRecentReward Whether to forfeit the recent rewards and not update the accumulator.
     function disableReward(address rewarded, address reward, bool forfeitRecentReward) external virtual override {
         address msgSender = _msgSender();
-
-        if (accountEnabledRewards[msgSender][rewarded].remove(reward)) {
+        AccountStorage storage accountStorage = accounts[msgSender][rewarded];
+        if (accountStorage.enabledRewards.remove(reward)) {
             TotalsStorage storage totalsStorage = distributionTotals[rewarded][reward];
             uint256 currentTotalEligible = totalsStorage.totalEligible;
-            uint256 currentAccountBalance = accountBalances[msgSender][rewarded];
+            uint256 currentAccountBalance = accountStorage.balance;
 
             updateRewardInternal(
                 msgSender, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward
@@ -301,12 +305,11 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         address reward,
         bool forfeitRecentReward
     ) external view virtual override returns (uint256) {
-        EarnStorage memory accountEarned = accountEarnedData[account][rewarded][reward];
-
         // If the account disables the rewards we pass an account balance of zero to not accrue any.
-        uint256 currentAccountBalance =
-            accountEnabledRewards[account][rewarded].contains(reward) ? accountBalances[account][rewarded] : 0;
+        AccountStorage storage accountStorage = accounts[account][rewarded];
+        uint256 currentAccountBalance = accountStorage.enabledRewards.contains(reward) ? accountStorage.balance : 0;
 
+        EarnStorage memory accountEarned = accountStorage.earned[reward];
         uint112 deltaAccountZero = calculateRewards(
             distributionData[rewarded][reward],
             accountEarned,
@@ -333,7 +336,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         address account,
         address rewarded
     ) external view virtual override returns (address[] memory) {
-        return accountEnabledRewards[account][rewarded].get();
+        return accounts[account][rewarded].enabledRewards.get();
     }
 
     /// @notice Returns the rewarded token balance of a specific account.
@@ -341,7 +344,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @param rewarded The address of the rewarded token.
     /// @return The rewarded token balance of the account.
     function balanceOf(address account, address rewarded) external view virtual override returns (uint256) {
-        return accountBalances[account][rewarded];
+        return accounts[account][rewarded].balance;
     }
 
     /// @notice Returns the reward token amount for a specific rewarded token and current epoch.
@@ -449,8 +452,9 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     function claim(address account, address rewarded, address reward, address recipient) internal virtual {
         if (recipient == address(0)) revert InvalidRecipient();
 
-        EarnStorage storage earnStorage = accountEarnedData[account][rewarded][reward];
-        uint128 amount = earnStorage.claimable;
+        AccountStorage storage accountStorage = accounts[account][rewarded];
+        EarnStorage storage accountEarned = accountStorage.earned[reward];
+        uint128 amount = accountEarned.claimable;
 
         // If there is a reward token to claim, transfer it to the recipient and emit an event.
         if (amount != 0) {
@@ -462,7 +466,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             assert(totalRegistered >= newTotalClaimed);
 
             totalsStorage.totalClaimed = uint128(newTotalClaimed);
-            earnStorage.claimable = 0;
+            accountEarned.claimable = 0;
 
             IERC20(reward).safeTransfer(recipient, amount);
             emit RewardClaimed(account, rewarded, reward, amount);
@@ -488,7 +492,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         bool forfeitRecentReward
     ) internal virtual {
         DistributionStorage memory distribution = distributionData[rewarded][reward];
-        EarnStorage memory accountEarned = accountEarnedData[account][rewarded][reward];
+        EarnStorage memory accountEarned = accounts[account][rewarded].earned[reward];
 
         uint112 deltaAccountZero = calculateRewards(
             distribution,
@@ -501,14 +505,15 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         );
 
         distributionData[rewarded][reward] = distribution;
-        accountEarnedData[account][rewarded][reward] = accountEarned;
+        accounts[account][rewarded].earned[reward] = accountEarned;
 
         // If there were excess rewards, allocate them to address(0).
         // Safe against overflow because the total registered amount is at most type(uint144).max / SCALER which is less
         // than type(uint112).max.
         if (deltaAccountZero != 0) {
-            accountEarnedData[address(0)][rewarded][reward].claimable += deltaAccountZero;
+            accounts[address(0)][rewarded].earned[reward].claimable += deltaAccountZero;
         }
+        // accounts[account][rewarded].earned[reward] = accountEarned;
     }
 
     /// @notice Computes updated data for a specific account, rewarded token, and reward token.
