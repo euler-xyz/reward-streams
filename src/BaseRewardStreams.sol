@@ -495,7 +495,9 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @param accountEarned The account earned storage memory, which is modified by this function.
     /// @param currentAccountBalance The current rewarded token balance of the account.
     /// @param forfeitRecentReward Whether to forfeit the recent rewards and not update the accumulator.
-    /// @return deltaAccountZero Amount to be credited to address(0) in case rewards were to be lost.
+    /// @return deltaAccountZero Amount to be credited to a`ddress(0)` in case rewards were to be lost.
+    /// @return lastUpdated The updated value for `lastUpdatedAt`.
+    /// @return accumulator The updated value for the distribution accumulator.
     function calculateRewards(
         DistributionStorage storage distribution,
         EarnStorage memory accountEarned,
