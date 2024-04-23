@@ -445,9 +445,13 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         // If there is a reward token to claim, transfer it to the recipient and emit an event.
         if (amount != 0) {
             DistributionStorage storage distributionStorage = distributions[rewarded][reward];
+            uint128 totalRegistered = distributionStorage.totalRegistered;
             uint128 totalClaimed = distributionStorage.totalClaimed;
             uint128 newTotalClaimed = totalClaimed + amount;
 
+            if (totalRegistered >= newTotalClaimed) {
+                revert AccumulatorOverflow();
+            }
             distributionStorage.totalClaimed = newTotalClaimed;
             accountEarned.claimable = 0;
 
