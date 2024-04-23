@@ -62,7 +62,7 @@ contract RegisterRewardTest is Test {
         uint8 amountsLength0,
         uint8 amountsLength1,
         uint8 amountsLength2,
-        bytes memory seed
+        uint256 seed
     ) external {
         epochDuration = uint48(bound(epochDuration, 7 days, 365 days));
         blockTimestamp = uint48(bound(blockTimestamp, 1, type(uint48).max - 50 * epochDuration));
@@ -130,7 +130,7 @@ contract RegisterRewardTest is Test {
         startEpoch = 0;
 
         // prepare the amounts
-        seed = abi.encode(keccak256(seed));
+        seed = uint256(keccak256(abi.encode(seed)));
         amounts = new uint128[](amountsLength1);
         totalAmount = 0;
         for (uint256 i; i < amounts.length; ++i) {
@@ -185,7 +185,7 @@ contract RegisterRewardTest is Test {
         );
 
         // prepare the amounts
-        seed = abi.encode(keccak256(seed));
+        seed = uint256(keccak256(abi.encode(seed)));
         amounts = new uint128[](amountsLength2);
         totalAmount = 0;
         for (uint256 i; i < amounts.length; ++i) {
@@ -229,9 +229,8 @@ contract RegisterRewardTest is Test {
     }
 
     function test_RevertIfInvalidEpoch_RegisterReward(uint48 blockTimestamp) external {
-        vm.assume(
-            blockTimestamp > distributor.EPOCH_DURATION()
-                && blockTimestamp < type(uint48).max - distributor.EPOCH_DURATION()
+        blockTimestamp = uint48(
+            bound(blockTimestamp, distributor.EPOCH_DURATION() + 1, type(uint48).max - distributor.EPOCH_DURATION())
         );
         vm.warp(blockTimestamp);
 

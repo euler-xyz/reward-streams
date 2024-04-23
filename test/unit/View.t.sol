@@ -18,7 +18,7 @@ contract ViewTest is Test {
         distributor = new BaseRewardStreamsHarness(address(evc), 10 days);
     }
 
-    function test_EnabledRewards(address account, address rewarded, uint8 n, bytes memory seed) external {
+    function test_EnabledRewards(address account, address rewarded, uint8 n, uint256 seed) external {
         account = boundAddr(account);
         rewarded = boundAddr(rewarded);
         n = uint8(bound(n, 1, 5));
@@ -72,7 +72,7 @@ contract ViewTest is Test {
     }
 
     function test_Epoch(uint48 timestamp) external {
-        vm.assume(timestamp < type(uint48).max - distributor.EPOCH_DURATION());
+        timestamp = uint48(bound(timestamp, 0, type(uint48).max - distributor.EPOCH_DURATION() - 1));
         vm.warp(timestamp);
 
         assertEq(distributor.getEpoch(timestamp), distributor.currentEpoch());
