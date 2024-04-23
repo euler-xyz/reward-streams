@@ -579,20 +579,20 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         uint256 endTimestamp = getEpochEndTimestamp(epoch);
 
         // Calculate the time elapsed in the given epoch.
-        if (block.timestamp < startTimestamp) {
-            // The epoch hasn't started yet.
-            return 0;
+        if (block.timestamp >= endTimestamp) {
+            // The epoch has ended.
+            // If the last update was in or after the given epoch, return the time elapsed between the last update to
+            // the end of the given epoch. If the last update was before the start of the given epoch, return the epoch
+            // duration.
+            return lastUpdated > startTimestamp ? endTimestamp - lastUpdated : EPOCH_DURATION;
         } else if (block.timestamp >= startTimestamp && block.timestamp < endTimestamp) {
             // The epoch is ongoing.
             // If the last update was in or after the given epoch, return the time elapsed since the last update.
             // Otherwise return the time elapsed from the start of the given epoch.
             return lastUpdated > startTimestamp ? block.timestamp - lastUpdated : block.timestamp - startTimestamp;
         } else {
-            // The epoch has ended.
-            // If the last update was in or after the given epoch, return the time elapsed between the last update to
-            // the end of the given epoch. If the last update was before the start of the given epoch, return the epoch
-            // duration.
-            return lastUpdated > startTimestamp ? endTimestamp - lastUpdated : EPOCH_DURATION;
+            // The epoch hasn't started yet.
+            return 0;
         }
     }
 }
