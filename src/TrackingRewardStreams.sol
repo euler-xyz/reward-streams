@@ -35,8 +35,9 @@ contract TrackingRewardStreams is BaseRewardStreams, ITrackingRewardStreams {
         bool forfeitRecentReward
     ) external override {
         address rewarded = msg.sender;
-        uint256 currentAccountBalance = accountBalances[account][rewarded];
-        address[] memory rewardsArray = accountEnabledRewards[account][rewarded].get();
+        AccountStorage storage accountStore = accountStorage[account][rewarded];
+        uint256 currentAccountBalance = accountStore.balance;
+        address[] memory rewardsArray = accountStore.enabledRewards.get();
 
         for (uint256 i; i < rewardsArray.length; ++i) {
             address reward = rewardsArray[i];
@@ -51,6 +52,6 @@ contract TrackingRewardStreams is BaseRewardStreams, ITrackingRewardStreams {
                 currentTotalEligible + newAccountBalance - currentAccountBalance;
         }
 
-        accountBalances[account][rewarded] = newAccountBalance;
+        accountStore.balance = newAccountBalance;
     }
 }

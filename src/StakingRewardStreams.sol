@@ -42,8 +42,9 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
             revert InvalidAmount();
         }
 
-        uint256 currentAccountBalance = accountBalances[msgSender][rewarded];
-        address[] memory rewardsArray = accountEnabledRewards[msgSender][rewarded].get();
+        AccountStorage storage account = accountStorage[msgSender][rewarded];
+        uint256 currentAccountBalance = account.balance;
+        address[] memory rewardsArray = account.enabledRewards.get();
 
         for (uint256 i; i < rewardsArray.length; ++i) {
             address reward = rewardsArray[i];
@@ -55,7 +56,7 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
             distributionTotals[rewarded][reward].totalEligible = currentTotalEligible + amount;
         }
 
-        accountBalances[msgSender][rewarded] = currentAccountBalance + amount;
+        account.balance = currentAccountBalance + amount;
 
         pullToken(IERC20(rewarded), msgSender, amount);
 
@@ -75,7 +76,8 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
         bool forfeitRecentReward
     ) external virtual override nonReentrant {
         address msgSender = _msgSender();
-        uint256 currentAccountBalance = accountBalances[msgSender][rewarded];
+        AccountStorage storage account = accountStorage[msgSender][rewarded];
+        uint256 currentAccountBalance = account.balance;
 
         if (amount == type(uint256).max) {
             amount = currentAccountBalance;
@@ -85,7 +87,7 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
             revert InvalidAmount();
         }
 
-        address[] memory rewardsArray = accountEnabledRewards[msgSender][rewarded].get();
+        address[] memory rewardsArray = account.enabledRewards.get();
 
         for (uint256 i; i < rewardsArray.length; ++i) {
             address reward = rewardsArray[i];
@@ -99,7 +101,7 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
             distributionTotals[rewarded][reward].totalEligible = currentTotalEligible - amount;
         }
 
-        accountBalances[msgSender][rewarded] = currentAccountBalance - amount;
+        account.balance = currentAccountBalance - amount;
 
         IERC20(rewarded).safeTransfer(recipient, amount);
 

@@ -35,15 +35,15 @@ contract TrackingRewardStreamsHarness is TrackingRewardStreams {
     }
 
     function getAccountBalance(address account, address rewarded) external view returns (uint256) {
-        return accountBalances[account][rewarded];
+        return accountStorage[account][rewarded].balance;
     }
 
     function setAccountBalance(address account, address rewarded, uint256 balance) external {
-        accountBalances[account][rewarded] = balance;
+        accountStorage[account][rewarded].balance = balance;
     }
 
     function insertReward(address account, address rewarded, address reward) external {
-        accountEnabledRewards[account][rewarded].insert(reward);
+        accountStorage[account][rewarded].enabledRewards.insert(reward);
     }
 
     function getAccountEarnedData(
@@ -51,15 +51,15 @@ contract TrackingRewardStreamsHarness is TrackingRewardStreams {
         address rewarded,
         address reward
     ) external view returns (EarnStorage memory) {
-        return accountEarnedData[account][rewarded][reward];
+        return accountStorage[account][rewarded].earnedData[reward];
     }
 
     function setAccountEarnedData(
         address account,
         address rewarded,
         address reward,
-        EarnStorage calldata earnStorage
+        EarnStorage memory earnStorage
     ) external {
-        accountEarnedData[account][rewarded][reward] = earnStorage;
+        accountStorage[account][rewarded].earnedData[reward] = earnStorage;
     }
 }
