@@ -423,7 +423,8 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         for (uint48 i = 0; i < amounts.length; ++i) {
             // Overflow safe because `totalRegistered <= type(uint144).max / SCALER < type(uint128).max`.
             unchecked {
-                storageAmounts[(startEpoch + i) / EPOCHS_PER_SLOT][(startEpoch + i) % EPOCHS_PER_SLOT] += amounts[i];
+                uint48 epoch = startEpoch + i;
+                storageAmounts[epoch / EPOCHS_PER_SLOT][epoch % EPOCHS_PER_SLOT] += amounts[i];
             }
         }
     }
@@ -438,20 +439,16 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     function claim(address account, address rewarded, address reward, address recipient) internal virtual {
         if (recipient == address(0)) revert InvalidRecipient();
 
-        AccountStorage storage accountStorage = accounts[account][rewarded];
-        EarnStorage storage accountEarned = accountStorage.earned[reward];
+        EarnStorage storage accountEarned = accounts[account][rewarded].earned[reward];
         uint128 amount = accountEarned.claimable;
 
         // If there is a reward token to claim, transfer it to the recipient and emit an event.
         if (amount != 0) {
             DistributionStorage storage distributionStorage = distributions[rewarded][reward];
-            uint128 totalRegistered = distributionStorage.totalRegistered;
             uint128 totalClaimed = distributionStorage.totalClaimed;
-            uint256 newTotalClaimed = totalClaimed + amount;
+            uint128 newTotalClaimed = totalClaimed + amount;
 
-            assert(totalRegistered >= newTotalClaimed);
-
-            distributionStorage.totalClaimed = uint128(newTotalClaimed);
+            distributionStorage.totalClaimed = newTotalClaimed;
             accountEarned.claimable = 0;
 
             IERC20(reward).safeTransfer(recipient, amount);
