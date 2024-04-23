@@ -191,7 +191,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         uint256 currentAccountBalance = accountStorage.enabledRewards.contains(reward) ? accountStorage.balance : 0;
 
         updateRewardInternal(
-            msgSender,
+            accountStorage,
             rewarded,
             reward,
             distributionTotals[rewarded][reward].totalEligible,
@@ -219,7 +219,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         uint256 currentAccountBalance = accountStorage.enabledRewards.contains(reward) ? accountStorage.balance : 0;
 
         updateRewardInternal(
-            msgSender,
+            accountStorage,
             rewarded,
             reward,
             distributionTotals[rewarded][reward].totalEligible,
@@ -263,7 +263,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
 
             // We pass zero as `currentAccountBalance` to not distribute rewards for the period before the account
             // enabled them.
-            updateRewardInternal(msgSender, rewarded, reward, currentTotalEligible, 0, false);
+            updateRewardInternal(accountStorage, rewarded, reward, currentTotalEligible, 0, false);
 
             totalsStorage.totalEligible = currentTotalEligible + currentAccountBalance;
 
@@ -284,7 +284,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             uint256 currentAccountBalance = accountStorage.balance;
 
             updateRewardInternal(
-                msgSender, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward
+                accountStorage, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward
             );
 
             totalsStorage.totalEligible = currentTotalEligible - currentAccountBalance;
@@ -477,14 +477,14 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @dev If required, this function artificially accumulates rewards for the address(0) to avoid loss of rewards
     /// that wouldn't be claimable by anyone else.
     /// @dev This function does not update total eligible amount or account balances.
-    /// @param account The address of the account.
+    /// @param accountStorage Pointer to the storage of the account.
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
     /// @param currentTotalEligible The current total amount of rewarded token eligible to get the reward token.
     /// @param currentAccountBalance The current rewarded token balance of the account.
     /// @param forfeitRecentReward Whether to forfeit the recent rewards and not update the accumulator.
     function updateRewardInternal(
-        address account,
+        AccountStorage storage accountStorage,
         address rewarded,
         address reward,
         uint256 currentTotalEligible,
@@ -492,7 +492,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         bool forfeitRecentReward
     ) internal virtual {
         DistributionStorage memory distribution = distributionData[rewarded][reward];
-        EarnStorage memory accountEarned = accounts[account][rewarded].earned[reward];
+        EarnStorage memory accountEarned = accountStorage.earned[reward];
 
         uint112 deltaAccountZero = calculateRewards(
             distribution,
@@ -505,7 +505,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         );
 
         distributionData[rewarded][reward] = distribution;
-        accounts[account][rewarded].earned[reward] = accountEarned;
+        accountStorage.earned[reward] = accountEarned;
 
         // If there were excess rewards, allocate them to address(0).
         // Safe against overflow because the total registered amount is at most type(uint144).max / SCALER which is less
@@ -547,9 +547,9 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             uint256 delta;
 
             // Calculate the amount of tokens since the last update that should be distributed.
-            for (uint48 i = epochStart; i <= epochEnd; ++i) {
-                delta +=
-                    SCALER * _timeElapsedInEpoch(i, lastUpdated) * rewardAmount(rewarded, reward, i) / EPOCH_DURATION;
+            for (uint48 epoch = epochStart; epoch <= epochEnd; ++epoch) {
+                delta += SCALER * _timeElapsedInEpoch(epoch, lastUpdated) * rewardAmount(rewarded, reward, epoch)
+                    / EPOCH_DURATION;
             }
 
             // Increase the accumulator scaled by the total eligible amount earning reward. In case nobody earns

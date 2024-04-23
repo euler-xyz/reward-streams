@@ -43,7 +43,7 @@ contract TrackingRewardStreams is BaseRewardStreams, ITrackingRewardStreams {
 
             // We allocate rewards always before updating any balances
             updateRewardInternal(
-                account, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward
+                accountStorage, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward
             );
 
             distributionTotals[rewarded][reward].totalEligible =
