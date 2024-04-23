@@ -11,27 +11,35 @@ contract StakingRewardStreamsHarness is StakingRewardStreams {
     constructor(address evc, uint48 epochDuration) StakingRewardStreams(evc, epochDuration) {}
 
     function setDistributionAmount(address rewarded, address reward, uint48 epoch, uint128 amount) external {
-        distributionAmounts[rewarded][reward][epoch / EPOCHS_PER_SLOT][epoch % EPOCHS_PER_SLOT] = amount;
+        distributions[rewarded][reward].amounts[epoch / EPOCHS_PER_SLOT][epoch % EPOCHS_PER_SLOT] = amount;
     }
 
-    function getDistributionData(address rewarded, address reward) external view returns (DistributionStorage memory) {
-        return distributionData[rewarded][reward];
+    function getDistributionData(address rewarded, address reward) external view returns (uint48, uint208) {
+        Distribution storage distribution = distributions[rewarded][reward];
+        return (distribution.lastUpdated, distribution.accumulator);
     }
 
-    function setDistributionData(
+    function setDistributionData(address rewarded, address reward, uint48 lastUpdated, uint208 accumulator) external {
+        Distribution storage distribution = distributions[rewarded][reward];
+        distribution.lastUpdated = lastUpdated;
+        distribution.accumulator = accumulator;
+    }
+
+    function getDistributionTotals(
         address rewarded,
-        address reward,
-        DistributionStorage calldata distributionStorage
-    ) external {
-        distributionData[rewarded][reward] = distributionStorage;
-    }
-
-    function getDistributionTotals(address rewarded, address reward) external view returns (uint256, uint128, uint128) {
+        address reward
+    ) external view returns (uint256, uint128, uint128) {
         Distribution storage distribution = distributions[rewarded][reward];
         return (distribution.totalEligible, distribution.totalRegistered, distribution.totalClaimed);
     }
 
-    function setDistributionTotals(address rewarded, address reward, uint256 totalEligible, uint128 totalRegistered, uint128 totalClaimed) external {
+    function setDistributionTotals(
+        address rewarded,
+        address reward,
+        uint256 totalEligible,
+        uint128 totalRegistered,
+        uint128 totalClaimed
+    ) external {
         Distribution storage distribution = distributions[rewarded][reward];
         distribution.totalEligible = totalEligible;
         distribution.totalRegistered = totalRegistered;

@@ -58,17 +58,17 @@ contract ViewTest is Test {
 
     function test_totalRewardedEligible(address rewarded, address reward, uint256 totalEligible) external {
         distributor.setDistributionTotals(rewarded, reward, totalEligible, 0, 0);
-        assertEq(distributor.totalRewardedEligible(rewarded, reward), totalEligible, 0, 0);
+        assertEq(distributor.totalRewardedEligible(rewarded, reward), totalEligible);
     }
 
     function test_totalRewardRegistered(address rewarded, address reward, uint128 totalRegistered) external {
         distributor.setDistributionTotals(rewarded, reward, 0, totalRegistered, 0);
-        assertEq(distributor.totalRewardRegistered(rewarded, reward), 0, totalRegistered, 0);
+        assertEq(distributor.totalRewardRegistered(rewarded, reward), totalRegistered);
     }
 
     function test_totalRewardClaimed(address rewarded, address reward, uint128 totalClaimed) external {
         distributor.setDistributionTotals(rewarded, reward, 0, 0, totalClaimed);
-        assertEq(distributor.totalRewardClaimed(rewarded, reward), 0, 0, totalClaimed);
+        assertEq(distributor.totalRewardClaimed(rewarded, reward), totalClaimed);
     }
 
     function test_Epoch(uint48 timestamp) external {

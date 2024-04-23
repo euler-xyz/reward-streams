@@ -43,17 +43,17 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
 
         AccountStorage storage account = accountStorage[msgSender][rewarded];
         uint256 currentAccountBalance = account.balance;
-        address[] memory rewardsArray = account.enabledRewards.get();
+        address[] memory rewards = account.enabledRewards.get();
 
-        for (uint256 i = 0; i < rewardsArray.length; ++i) {
-            address reward = rewardsArray[i];
+        for (uint256 i = 0; i < rewards.length; ++i) {
+            address reward = rewards[i];
             Distribution storage distribution = distributions[rewarded][reward];
             uint256 currentTotalEligible = distribution.totalEligible;
 
             // We allocate rewards always before updating any balances
-            updateRewardInternal(account, rewarded, reward, currentTotalEligible, currentAccountBalance, false);
+            updateRewardInternal(account, rewarded, reward, currentAccountBalance, false);
 
-            distributionTotals[rewarded][reward].totalEligible = currentTotalEligible + amount;
+            distribution.totalEligible = currentTotalEligible + amount;
         }
 
         account.balance = currentAccountBalance + amount;
@@ -87,18 +87,17 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
             revert InvalidAmount();
         }
 
-        address[] memory rewardsArray = account.enabledRewards.get();
+        address[] memory rewards = account.enabledRewards.get();
 
-        for (uint256 i = 0; i < rewardsArray.length; ++i) {
-            address reward = rewardsArray[i];
-            uint256 currentTotalEligible = distributionTotals[rewarded][reward].totalEligible;
+        for (uint256 i = 0; i < rewards.length; ++i) {
+            address reward = rewards[i];
+            Distribution storage distribution = distributions[rewarded][reward];
+            uint256 currentTotalEligible = distribution.totalEligible;
 
             // We allocate rewards always before updating any balances
-            updateRewardInternal(
-                account, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward
-            );
+            updateRewardInternal(account, rewarded, reward, currentAccountBalance, forfeitRecentReward);
 
-            distributionTotals[rewarded][reward].totalEligible = currentTotalEligible - amount;
+            distribution.totalEligible = currentTotalEligible - amount;
         }
 
         account.balance = currentAccountBalance - amount;

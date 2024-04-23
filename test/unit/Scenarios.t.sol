@@ -1003,6 +1003,7 @@ contract ScenarioTest is Test {
         assertEq(trackingDistributor.earnedReward(participant1, trackingRewarded, reward, false), 0);
         assertEq(stakingDistributor.earnedReward(participant2, stakingRewarded, reward, false), 0);
         assertEq(trackingDistributor.earnedReward(participant2, trackingRewarded, reward, false), 0);
+        console.log("here");
         assertApproxEqRel(
             stakingDistributor.earnedReward(address(0), stakingRewarded, reward, false), 1e18, ALLOWED_DELTA
         );
@@ -1055,6 +1056,7 @@ contract ScenarioTest is Test {
 
         // forward the time
         vm.warp(block.timestamp + 5 days);
+        console.log("here2");
 
         // verify earnings
         assertApproxEqRel(
@@ -1138,6 +1140,7 @@ contract ScenarioTest is Test {
         assertEq(stakingDistributor.earnedReward(address(0), stakingRewarded, reward2, false), 0);
         assertEq(trackingDistributor.earnedReward(address(0), trackingRewarded, reward2, false), 0);
 
+        console.log("here3");
         // participant 1: disables reward2
         // participant 2: disables reward
         vm.startPrank(participant1);
@@ -1299,6 +1302,7 @@ contract ScenarioTest is Test {
         trackingDistributor.enableReward(trackingRewarded, reward2);
         vm.stopPrank();
 
+        console.log("here4");
         // forward the time
         vm.warp(block.timestamp + 5 days);
 
@@ -1352,6 +1356,7 @@ contract ScenarioTest is Test {
         trackingDistributor.enableReward(trackingRewarded, reward2);
         vm.stopPrank();
 
+        console.log("here5");
         // forward the time
         vm.warp(block.timestamp + 5 days);
 
@@ -1412,6 +1417,7 @@ contract ScenarioTest is Test {
         // forward the time
         vm.warp(block.timestamp + 5 days);
 
+        console.log("here6");
         // verify earnings
         assertApproxEqRel(
             stakingDistributor.earnedReward(participant1, stakingRewarded, reward, false), 11.083334e18, ALLOWED_DELTA
@@ -1466,6 +1472,7 @@ contract ScenarioTest is Test {
         MockERC20(trackingRewarded).transferFrom(address(1), participant2, 1e18);
         vm.stopPrank();
 
+        console.log("here7");
         // verify earnings
         assertApproxEqRel(
             stakingDistributor.earnedReward(participant1, stakingRewarded, reward, false), 6.083334e18, ALLOWED_DELTA
@@ -1503,6 +1510,7 @@ contract ScenarioTest is Test {
         assertApproxEqRel(
             trackingDistributor.earnedReward(address(0), trackingRewarded, reward2, false), 7e18, ALLOWED_DELTA
         );
+        console.log("here8");
 
         // participant1 claims rewards
         vm.startPrank(participant1);

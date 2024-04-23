@@ -99,15 +99,18 @@ contract RegisterRewardTest is Test {
         // verify that the total amount was properly transferred
         assertEq(MockERC20(reward).balanceOf(address(distributor)), totalAmount);
 
-        // verify that the distribution and totals storage were properly initialized
-        assertEq(
-            abi.encode(distributor.getDistributionData(rewarded, reward)),
-            abi.encode(BaseRewardStreams.DistributionStorage({lastUpdated: uint48(block.timestamp), accumulator: 0}))
-        );
-        assertEq(
-            abi.encode(distributor.getDistributionTotals(rewarded, reward)),
-            abi.encode(0, totalAmount, 0);
-        );
+        {
+            // verify that the distribution and totals storage were properly initialized
+            (uint48 updatedAt, uint208 accumulator) = distributor.getDistributionData(rewarded, reward);
+            assertEq(updatedAt, uint48(block.timestamp));
+            assertEq(accumulator, 0);
+
+            (uint256 totalEligible, uint128 totalRegistered, uint128 totalClaimed) =
+                distributor.getDistributionTotals(rewarded, reward);
+            assertEq(totalEligible, 0);
+            assertEq(totalRegistered, totalAmount);
+            assertEq(totalClaimed, 0);
+        }
 
         // verify that the distribution amounts storage was properly updated
         updateDistributionAmounts(rewarded, reward, startEpoch, amounts);
@@ -140,15 +143,18 @@ contract RegisterRewardTest is Test {
         // verify that the total amount was properly transferred
         assertEq(MockERC20(reward).balanceOf(address(distributor)), preBalance + totalAmount);
 
-        // verify that the totals storage was properly updated (no time elapsed)
-        assertEq(
-            abi.encode(distributor.getDistributionData(rewarded, reward)),
-            abi.encode(BaseRewardStreams.DistributionStorage({lastUpdated: uint48(block.timestamp), accumulator: 0}))
-        );
-        assertEq(
-            abi.encode(distributor.getDistributionTotals(rewarded, reward)),
-            abi.encode(0, uint128(preBalance) + totalAmount, 0)
-        );
+        {
+            // verify that the totals storage was properly updated (no time elapsed)
+            (uint48 updatedAt, uint208 accumulator) = distributor.getDistributionData(rewarded, reward);
+            assertEq(updatedAt, uint48(block.timestamp));
+            assertEq(accumulator, 0);
+
+            (uint256 totalEligible, uint128 totalRegistered, uint128 totalClaimed) =
+                distributor.getDistributionTotals(rewarded, reward);
+            assertEq(totalEligible, 0);
+            assertEq(totalRegistered, uint128(preBalance) + totalAmount);
+            assertEq(totalClaimed, 0);
+        }
 
         // verify that the distribution amounts storage was properly updated
         startEpoch = distributor.currentEpoch() + 1;
@@ -189,15 +195,18 @@ contract RegisterRewardTest is Test {
         // verify that the total amount was properly transferred
         assertEq(MockERC20(reward).balanceOf(address(distributor)), preBalance + totalAmount);
 
-        // verify that the totals storage was properly updated (considering that some has time elapsed)
-        assertEq(
-            abi.encode(distributor.getDistributionData(rewarded, reward)),
-            abi.encode(BaseRewardStreams.DistributionStorage({lastUpdated: uint48(block.timestamp), accumulator: 0}))
-        );
-        assertEq(
-            abi.encode(distributor.getDistributionTotals(rewarded, reward)),
-            abi.encode(0, uint128(preBalance) + totalAmount, 0);
-        );
+        {
+            // verify that the totals storage was properly updated (considering that some has time elapsed)
+            (uint48 updatedAt, uint208 accumulator) = distributor.getDistributionData(rewarded, reward);
+            assertEq(updatedAt, uint48(block.timestamp));
+            assertEq(accumulator, 0);
+
+            (uint256 totalEligible, uint128 totalRegistered, uint128 totalClaimed) =
+                distributor.getDistributionTotals(rewarded, reward);
+            assertEq(totalEligible, 0);
+            assertEq(totalRegistered, uint128(preBalance) + totalAmount);
+            assertEq(totalClaimed, 0);
+        }
 
         // verify that the distribution amounts storage was properly updated
         updateDistributionAmounts(rewarded, reward, startEpoch, amounts);
@@ -266,11 +275,8 @@ contract RegisterRewardTest is Test {
         amounts[0] = 1;
 
         // initialize the distribution data and set the total registered amount to the max value
-        BaseRewardStreams.DistributionStorage memory distribution =
-            BaseRewardStreams.DistributionStorage({lastUpdated: uint48(1), accumulator: 0});
         uint128 totalRegistered = uint128(type(uint144).max / 1e12);
-
-        distributor.setDistributionData(rewarded, reward, distribution);
+        distributor.setDistributionData(rewarded, reward, uint48(1), 0);
         distributor.setDistributionTotals(rewarded, reward, 0, totalRegistered, 0);
 
         vm.startPrank(seeder);
