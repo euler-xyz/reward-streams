@@ -301,9 +301,8 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
 
         EarnStorage memory accountEarned = accountStorage.earned[reward];
         DistributionStorage storage distributionStorage = distributions[rewarded][reward];
-        (uint112 deltaAccountZero,,) = calculateRewards(
-            distributionStorage, accountEarned, rewarded, reward, currentAccountBalance, forfeitRecentReward
-        );
+        (uint112 deltaAccountZero,,) =
+            calculateRewards(distributionStorage, accountEarned, currentAccountBalance, forfeitRecentReward);
 
         // If we have spillover rewards, we add them to address(0)
         if (account == address(0) && deltaAccountZero != 0) {
@@ -479,9 +478,8 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     ) internal virtual {
         EarnStorage memory accountEarned = accountStorage.earned[reward];
 
-        (uint112 deltaAccountZero, uint48 lastUpdated, uint208 accumulator) = calculateRewards(
-            distributionStorage, accountEarned, rewarded, reward, currentAccountBalance, forfeitRecentReward
-        );
+        (uint112 deltaAccountZero, uint48 lastUpdated, uint208 accumulator) =
+            calculateRewards(distributionStorage, accountEarned, currentAccountBalance, forfeitRecentReward);
 
         distributionStorage.lastUpdated = lastUpdated;
         distributionStorage.accumulator = accumulator;
@@ -498,16 +496,12 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @notice Computes updated data for a specific account, rewarded token, and reward token.
     /// @param distribution The distribution storage memory, which is modified by this function.
     /// @param accountEarned The account earned storage memory, which is modified by this function.
-    /// @param rewarded The address of the rewarded token.
-    /// @param reward The address of the reward token.
     /// @param currentAccountBalance The current rewarded token balance of the account.
     /// @param forfeitRecentReward Whether to forfeit the recent rewards and not update the accumulator.
     /// @return deltaAccountZero Amount to be credited to address(0) in case rewards were to be lost.
     function calculateRewards(
         DistributionStorage storage distribution,
         EarnStorage memory accountEarned,
-        address rewarded,
-        address reward,
         uint256 currentAccountBalance,
         bool forfeitRecentReward
     ) internal view virtual returns (uint112 deltaAccountZero, uint48 lastUpdated, uint208 accumulator) {
@@ -524,8 +518,8 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
 
             // Calculate the amount of tokens since the last update that should be distributed.
             for (uint48 epoch = epochStart; epoch <= epochEnd; ++epoch) {
-                delta += SCALER * _timeElapsedInEpoch(epoch, lastUpdated) * rewardAmount(rewarded, reward, epoch)
-                    / EPOCH_DURATION;
+                uint256 amount = distribution.amounts[epoch / EPOCHS_PER_SLOT][epoch % EPOCHS_PER_SLOT];
+                delta += SCALER * _timeElapsedInEpoch(epoch, lastUpdated) * amount / EPOCH_DURATION;
             }
 
             // Increase the accumulator scaled by the total eligible amount earning reward. In case nobody earns
