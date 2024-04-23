@@ -24,8 +24,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     uint256 internal constant EPOCHS_PER_SLOT = 2;
 
     // @notice This value is used to increase the precision of the calculations due to the fact that distributed amount
-    // of
-    // rewards must be divided by the total eligible amount. 1e12 value is carefully chosen to allow big enough
+    // of rewards must be divided by the total eligible amount. 1e12 value is carefully chosen to allow big enough
     // total registered amount, per rewarded and reward token pair, while not allowing the accumulator to overflow.
     uint256 internal constant SCALER = 1e12;
 
@@ -62,24 +61,6 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @notice Recipient-related error. Throws when the recipient is invalid.
     error InvalidRecipient();
 
-    /// @notice Struct to store distribution data per rewarded and reward tokens.
-    struct DistributionStorage {
-        /// @notice The last timestamp when the distribution was updated.
-        uint48 lastUpdated;
-        /// @notice The most recent accumulator value.
-        uint208 accumulator;
-    }
-
-    /// @notice Struct to store totals data per rewarded and reward tokens.
-    struct TotalsStorage {
-        /// @notice Total rewarded token that are eligible for rewards.
-        uint256 totalEligible;
-        /// @notice Total reward token that have been transferred into this contract for rewards.
-        uint128 totalRegistered;
-        /// @notice Total reward token that have been transferred out from this contract for rewards.
-        uint128 totalClaimed;
-    }
-
     /// @notice Struct to store earned data.
     struct EarnStorage {
         /// @notice Claimable amount, not total earned.
@@ -103,11 +84,6 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     }
 
     mapping(address rewarded => mapping(address reward => Distribution)) internal distributions;
-
-    // mapping(address rewarded => mapping(address reward => mapping(uint256 storageIndex => uint128[EPOCHS_PER_SLOT])))
-    //     internal distributionAmounts;
-    // mapping(address rewarded => mapping(address reward => DistributionStorage)) internal distributionData;
-    // mapping(address rewarded => mapping(address reward => TotalsStorage)) internal distributionTotals;
 
     struct AccountStorage {
         SetStorage enabledRewards;
@@ -258,14 +234,14 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             }
 
             Distribution storage distribution = distributions[rewarded][reward];
-            uint256 totalEligible = distribution.totalEligible;
-            uint256 balance = account.balance;
+            uint256 currentTotalEligible = distribution.totalEligible;
+            uint256 currentAccountBalance = account.balance;
 
             // We pass zero as `currentAccountBalance` to not distribute rewards for the period before the account
             // enabled them.
             updateRewardInternal(account, rewarded, reward, 0, false);
 
-            distribution.totalEligible = totalEligible + balance;
+            distribution.totalEligible = currentTotalEligible + currentAccountBalance;
 
             emit RewardEnabled(msgSender, rewarded, reward);
         }
@@ -311,8 +287,9 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         // If the account disables the rewards we pass an account balance of zero to not accrue any.
         uint256 currentAccountBalance = accountStore.enabledRewards.contains(reward) ? accountStore.balance : 0;
 
-        (uint112 deltaAccountZero,) =
-            calculateRewards(distribution, accountEarned, currentAccountBalance, forfeitRecentReward);
+        (uint112 deltaAccountZero,) = calculateRewards(
+            distribution, accountEarned, distribution.totalEligible, currentAccountBalance, forfeitRecentReward
+        );
 
         // If we have spillover rewards, we add them to address(0)
         if (account == address(0) && deltaAccountZero != 0) {
@@ -485,8 +462,9 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         Distribution storage distribution = distributions[rewarded][reward];
         EarnStorage memory accountEarned = account.earnedData[reward];
 
-        (uint112 deltaAccountZero, uint208 accumulator) =
-            calculateRewards(distribution, accountEarned, currentAccountBalance, forfeitRecentReward);
+        (uint112 deltaAccountZero, uint208 accumulator) = calculateRewards(
+            distribution, accountEarned, distribution.totalEligible, currentAccountBalance, forfeitRecentReward
+        );
 
         distribution.lastUpdated = uint48(block.timestamp);
         distribution.accumulator = accumulator;
@@ -509,6 +487,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     function calculateRewards(
         Distribution storage distribution,
         EarnStorage memory accountEarned,
+        uint256 currentTotalEligible,
         uint256 currentAccountBalance,
         bool forfeitRecentReward
     ) internal view virtual returns (uint112 deltaAccountZero, uint208) {
@@ -533,7 +512,6 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
 
             // Increase the accumulator scaled by the total eligible amount earning reward. In case nobody earns
             // rewards, accrue them to address(0). Otherwise, some portion of the rewards might get lost.
-            uint256 currentTotalEligible = distribution.totalEligible;
             if (currentTotalEligible == 0) {
                 // Safe against overflow because the total registered amount is at most type(uint144).max / SCALER which
                 // is less than type(uint112).max.
