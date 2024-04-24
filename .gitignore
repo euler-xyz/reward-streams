@@ -30,3 +30,6 @@ Thumbs.db
 # Coverage
 coverage/
 *.info
+
+# Gas snapshot
+.gas-snapshot

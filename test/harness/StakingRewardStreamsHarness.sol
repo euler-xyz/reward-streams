@@ -11,39 +11,82 @@ contract StakingRewardStreamsHarness is StakingRewardStreams {
     constructor(address evc, uint48 epochDuration) StakingRewardStreams(evc, epochDuration) {}
 
     function setDistributionAmount(address rewarded, address reward, uint48 epoch, uint128 amount) external {
-        distributionAmounts[rewarded][reward][epoch / EPOCHS_PER_SLOT][epoch % EPOCHS_PER_SLOT] = amount;
+        distributions[rewarded][reward].amounts[epoch / EPOCHS_PER_SLOT][epoch % EPOCHS_PER_SLOT] = amount;
     }
 
-    function getDistributionData(address rewarded, address reward) external view returns (DistributionStorage memory) {
-        return distributionData[rewarded][reward];
+    function getDistributionData(
+        address rewarded,
+        address reward
+    )
+        external
+        view
+        returns (
+            uint48, /* lastUpdated */
+            uint208, /* accumulator */
+            uint256, /* totalEligible */
+            uint128, /* totalRegistered */
+            uint128 /* totalClaimed */
+        )
+    {
+        DistributionStorage storage distributionStorage = distributions[rewarded][reward];
+        return (
+            distributionStorage.lastUpdated,
+            distributionStorage.accumulator,
+            distributionStorage.totalEligible,
+            distributionStorage.totalRegistered,
+            distributionStorage.totalClaimed
+        );
     }
 
     function setDistributionData(
         address rewarded,
         address reward,
-        DistributionStorage calldata distributionStorage
+        uint48 lastUpdated,
+        uint208 accumulator,
+        uint256 totalEligible,
+        uint128 totalRegistered,
+        uint128 totalClaimed
     ) external {
-        distributionData[rewarded][reward] = distributionStorage;
+        DistributionStorage storage distributionStorage = distributions[rewarded][reward];
+        distributionStorage.lastUpdated = lastUpdated;
+        distributionStorage.accumulator = accumulator;
+        distributionStorage.totalEligible = totalEligible;
+        distributionStorage.totalRegistered = totalRegistered;
+        distributionStorage.totalClaimed = totalClaimed;
     }
 
-    function getDistributionTotals(address rewarded, address reward) external view returns (TotalsStorage memory) {
-        return distributionTotals[rewarded][reward];
+    function getDistributionTotals(
+        address rewarded,
+        address reward
+    ) external view returns (uint256, uint128, uint128) {
+        DistributionStorage storage distributionStorage = distributions[rewarded][reward];
+        return
+            (distributionStorage.totalEligible, distributionStorage.totalRegistered, distributionStorage.totalClaimed);
     }
 
-    function setDistributionTotals(address rewarded, address reward, TotalsStorage calldata totalsStorage) external {
-        distributionTotals[rewarded][reward] = totalsStorage;
+    function setDistributionTotals(
+        address rewarded,
+        address reward,
+        uint256 totalEligible,
+        uint128 totalRegistered,
+        uint128 totalClaimed
+    ) external {
+        DistributionStorage storage distributionStorage = distributions[rewarded][reward];
+        distributionStorage.totalEligible = totalEligible;
+        distributionStorage.totalRegistered = totalRegistered;
+        distributionStorage.totalClaimed = totalClaimed;
     }
 
     function getAccountBalance(address account, address rewarded) external view returns (uint256) {
-        return accountBalances[account][rewarded];
+        return accounts[account][rewarded].balance;
     }
 
     function setAccountBalance(address account, address rewarded, uint256 balance) external {
-        accountBalances[account][rewarded] = balance;
+        accounts[account][rewarded].balance = balance;
     }
 
     function insertReward(address account, address rewarded, address reward) external {
-        accountEnabledRewards[account][rewarded].insert(reward);
+        accounts[account][rewarded].enabledRewards.insert(reward);
     }
 
     function getAccountEarnedData(
@@ -51,15 +94,15 @@ contract StakingRewardStreamsHarness is StakingRewardStreams {
         address rewarded,
         address reward
     ) external view returns (EarnStorage memory) {
-        return accountEarnedData[account][rewarded][reward];
+        return accounts[account][rewarded].earned[reward];
     }
 
     function setAccountEarnedData(
         address account,
         address rewarded,
         address reward,
-        EarnStorage calldata earnStorage
+        EarnStorage memory earnStorage
     ) external {
-        accountEarnedData[account][rewarded][reward] = earnStorage;
+        accounts[account][rewarded].earned[reward] = earnStorage;
     }
 }

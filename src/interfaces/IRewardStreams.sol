@@ -6,7 +6,7 @@ import "./IBalanceTracker.sol";
 
 /// @title IRewardStreams
 /// @author Euler Labs (https://www.eulerlabs.com/)
-/// @notice Interface for Reward Streams distributor contract
+/// @notice Interface for Reward Streams distributor contract.
 interface IRewardStreams {
     function registerReward(address rewarded, address reward, uint48 startEpoch, uint128[] calldata rewardAmounts) external;
     function updateReward(address rewarded, address reward) external;
@@ -31,12 +31,12 @@ interface IRewardStreams {
 
 /// @title ITrackingRewardStreams
 /// @author Euler Labs (https://www.eulerlabs.com/)
-/// @notice Interface for Tracking Reward Streams, extends IRewardStreams and IBalanceTracker
+/// @notice Interface for Tracking Reward Streams. Extends `IRewardStreams` and `IBalanceTracker`.
 interface ITrackingRewardStreams is IRewardStreams, IBalanceTracker {}
 
 /// @title IStakingRewardStreams
 /// @author Euler Labs (https://www.eulerlabs.com/)
-/// @notice Interface for Staking Reward Streams, extends IRewardStreams with staking functionality
+/// @notice Interface for Staking Reward Streams. Extends `IRewardStreams` with staking functionality.
 interface IStakingRewardStreams is IRewardStreams {
     function stake(address rewarded, uint256 amount) external;
     function unstake(address rewarded, uint256 amount, address recipient, bool forfeitRecentReward) external;

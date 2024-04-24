@@ -2,21 +2,19 @@
 
 pragma solidity 0.8.24;
 
-import {SafeERC20, IERC20} from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
-import {EVCUtil, IEVC} from "evc/utils/EVCUtil.sol";
 import {Set, SetStorage} from "evc/Set.sol";
 import {BaseRewardStreams} from "./BaseRewardStreams.sol";
 import {ITrackingRewardStreams} from "./interfaces/IRewardStreams.sol";
 
 /// @title TrackingRewardStreams
 /// @author Euler Labs (https://www.eulerlabs.com/)
-/// @notice This contract inherits from BaseRewardStreams and implements ITrackingRewardStreams interface. It
-/// allows for the rewards to be distributed to the rewarded token holders without a need to stake the shares. The
-/// rewarded token contract must be compatible with the Balance Forwarder interface and the balanceTrackerHook function.
-/// The balanceTrackerHook must be called with:
-/// - the account's new balance when account's balance changes
-/// - the current account's balance when the balance forwarding is enabled
-/// - the account's balance of 0 when the balance forwarding is disabled
+/// @notice This contract inherits from `BaseRewardStreams` and implements `ITrackingRewardStreams`.
+/// It allows for the rewards to be distributed to the rewarded token holders without requiring explicit staking.
+/// The rewarded token contract must implement `IBalanceTracker` and the `balanceTrackerHook` function.
+/// `balanceTrackerHook` must be called with:
+/// - the account's new balance when account's balance changes,
+/// - the current account's balance when the balance forwarding is enabled,
+/// - the account's balance of 0 when the balance forwarding is disabled.
 contract TrackingRewardStreams is BaseRewardStreams, ITrackingRewardStreams {
     using Set for SetStorage;
 
@@ -35,22 +33,28 @@ contract TrackingRewardStreams is BaseRewardStreams, ITrackingRewardStreams {
         bool forfeitRecentReward
     ) external override {
         address rewarded = msg.sender;
-        uint256 currentAccountBalance = accountBalances[account][rewarded];
-        address[] memory rewardsArray = accountEnabledRewards[account][rewarded].get();
+        AccountStorage storage accountStorage = accounts[account][rewarded];
+        uint256 currentAccountBalance = accountStorage.balance;
+        address[] memory rewards = accountStorage.enabledRewards.get();
 
-        for (uint256 i = 0; i < rewardsArray.length; ++i) {
-            address reward = rewardsArray[i];
-            uint256 currentTotalEligible = distributionTotals[rewarded][reward].totalEligible;
+        for (uint256 i = 0; i < rewards.length; ++i) {
+            address reward = rewards[i];
+            DistributionStorage storage distributionStorage = distributions[rewarded][reward];
 
-            // We allocate rewards always before updating any balances
+            // We always allocate rewards before updating any balances.
             updateRewardInternal(
-                account, rewarded, reward, currentTotalEligible, currentAccountBalance, forfeitRecentReward
+                distributionStorage,
+                accountStorage.earned[reward],
+                rewarded,
+                reward,
+                currentAccountBalance,
+                forfeitRecentReward
             );
 
-            distributionTotals[rewarded][reward].totalEligible =
-                currentTotalEligible + newAccountBalance - currentAccountBalance;
+            distributionStorage.totalEligible =
+                distributionStorage.totalEligible + newAccountBalance - currentAccountBalance;
         }
 
-        accountBalances[account][rewarded] = newAccountBalance;
+        accountStorage.balance = newAccountBalance;
     }
 }
