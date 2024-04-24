@@ -91,7 +91,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         uint256 balance;
         /// @notice The account's set of enabled reward tokens.
         SetStorage enabledRewards;
-        /// @notice The accont's earnins per reward token.
+        /// @notice The account's earnings per reward token.
         mapping(address reward => EarnStorage) earned;
     }
 
