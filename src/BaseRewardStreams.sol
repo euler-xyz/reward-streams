@@ -449,9 +449,8 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             uint128 totalClaimed = distributionStorage.totalClaimed;
             uint128 newTotalClaimed = totalClaimed + amount;
 
-            if (totalRegistered < newTotalClaimed) {
-                revert AccumulatorOverflow();
-            }
+            assert(totalRegistered >= newTotalClaimed);
+
             distributionStorage.totalClaimed = newTotalClaimed;
             accountEarned.claimable = 0;
 
