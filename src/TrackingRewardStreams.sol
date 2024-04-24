@@ -41,7 +41,7 @@ contract TrackingRewardStreams is BaseRewardStreams, ITrackingRewardStreams {
             address reward = rewards[i];
             DistributionStorage storage distributionStorage = distributions[rewarded][reward];
 
-            // We allocate rewards always before updating any balances.
+            // We always allocate rewards before updating any balances.
             updateRewardInternal(
                 distributionStorage, accountStorage, rewarded, reward, currentAccountBalance, forfeitRecentReward
             );
