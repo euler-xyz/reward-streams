@@ -1,5 +1,0 @@
-{
-    "rules": {
-        "private-vars-leading-underscore": ["off",{"strict":false}]
-    }
-}
