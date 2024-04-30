@@ -124,7 +124,7 @@ Unlike other permissioned distributors based on the billion-dollar algorithm, Re
 
 ## Install
 
-To install Ethereum Vault Connector in a [Foundry](https://github.com/foundry-rs/foundry) project:
+To install Reward Streams in a [Foundry](https://github.com/foundry-rs/foundry) project:
 
 ```sh
 forge install euler-xyz/reward-streams
