@@ -443,6 +443,22 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         }
     }
 
+    /// @notice Transfers a specified amount of a token to a given address.
+    /// @dev This function uses `IERC20.safeTransfer` to move tokens.
+    /// @dev This function reverts if the recipient is zero address or is a known non-owner EVC account.
+    /// @param token The ERC20 token to transfer.
+    /// @param to The address to transfer the tokens to.
+    /// @param amount The amount of tokens to transfer.
+    function pushToken(IERC20 token, address to, uint256 amount) internal {
+        address owner = evc.getAccountOwner(to);
+
+        if (to == address(0) || (owner != address(0) && owner != to)) {
+            revert InvalidRecipient();
+        }
+
+        IERC20(token).safeTransfer(to, amount);
+    }
+
     /// @notice Returns the reward token amount for an epoch, given a pre-computed distribution storage pointer.
     /// @param distributionStorage Pre-computed distribution storage pointer.
     /// @param epoch The epoch to get the reward token amount for.
@@ -478,14 +494,13 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
 
     /// @notice Claims the earned reward for a specific account, rewarded token, and reward token, and transfers it to
     /// the recipient.
-    /// @dev If recipient is address(0) or there is no reward to claim, this function does nothing.
+    /// @dev This function reverts if the recipient is zero address or is a known non-owner EVC account.
+    /// @dev If there is no reward to claim, this function does nothing.
     /// @param account The address of the account claiming the reward.
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
     /// @param recipient The address to which the claimed reward will be transferred.
     function claim(address account, address rewarded, address reward, address recipient) internal virtual {
-        if (recipient == address(0)) revert InvalidRecipient();
-
         EarnStorage storage accountEarned = accounts[account][rewarded].earned[reward];
         uint128 amount = accountEarned.claimable;
 
@@ -501,7 +516,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             distributionStorage.totalClaimed = newTotalClaimed;
             accountEarned.claimable = 0;
 
-            IERC20(reward).safeTransfer(recipient, amount);
+            pushToken(IERC20(reward), recipient, amount);
             emit RewardClaimed(account, rewarded, reward, amount);
         }
     }

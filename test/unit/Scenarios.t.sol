@@ -8,6 +8,7 @@ import "../harness/StakingRewardStreamsHarness.sol";
 import "../harness/TrackingRewardStreamsHarness.sol";
 import {MockERC20, MockERC20BalanceForwarder} from "../utils/MockERC20.sol";
 import {MockController} from "../utils/MockController.sol";
+import {boundAddr} from "../utils/TestUtils.sol";
 
 contract ScenarioTest is Test {
     address internal PARTICIPANT_1;
@@ -2290,22 +2291,68 @@ contract ScenarioTest is Test {
         address _receiver,
         bool _forfeitRecentReward
     ) external {
+        _rewarded = boundAddr(_rewarded);
+        _reward = boundAddr(_reward);
+        _receiver = boundAddr(_receiver);
         vm.assume(_receiver != address(0));
 
+        vm.etch(_reward, address(reward).code);
+        MockERC20(_reward).mint(address(stakingDistributor), 100e18);
+        MockERC20(_reward).mint(address(trackingDistributor), 100e18);
+        stakingDistributor.setDistributionTotals(_rewarded, _reward, 0, 100e18, 0);
+        trackingDistributor.setDistributionTotals(_rewarded, _reward, 0, 100e18, 0);
+
+        stakingDistributor.setAccountEarnedData(address(this), _rewarded, _reward, BaseRewardStreams.EarnStorage(1, 0));
         vm.expectRevert(BaseRewardStreams.InvalidRecipient.selector);
         stakingDistributor.claimReward(_rewarded, _reward, address(0), _forfeitRecentReward);
         stakingDistributor.claimReward(_rewarded, _reward, _receiver, _forfeitRecentReward);
 
+        trackingDistributor.setAccountEarnedData(address(this), _rewarded, _reward, BaseRewardStreams.EarnStorage(1, 0));
         vm.expectRevert(BaseRewardStreams.InvalidRecipient.selector);
         trackingDistributor.claimReward(_rewarded, _reward, address(0), _forfeitRecentReward);
         trackingDistributor.claimReward(_rewarded, _reward, _receiver, _forfeitRecentReward);
 
+        stakingDistributor.setAccountEarnedData(address(0), _rewarded, _reward, BaseRewardStreams.EarnStorage(1, 0));
         vm.expectRevert(BaseRewardStreams.InvalidRecipient.selector);
         stakingDistributor.claimSpilloverReward(_rewarded, _reward, address(0));
         stakingDistributor.claimSpilloverReward(_rewarded, _reward, _receiver);
 
+        trackingDistributor.setAccountEarnedData(address(0), _rewarded, _reward, BaseRewardStreams.EarnStorage(1, 0));
         vm.expectRevert(BaseRewardStreams.InvalidRecipient.selector);
         trackingDistributor.claimSpilloverReward(_rewarded, _reward, address(0));
         trackingDistributor.claimSpilloverReward(_rewarded, _reward, _receiver);
+
+        // register the receiver as the owner on the EVC
+        assertEq(evc.getAccountOwner(_receiver), address(0));
+        vm.prank(_receiver);
+        evc.call(address(0), _receiver, 0, "");
+        assertEq(evc.getAccountOwner(_receiver), _receiver);
+
+        for (uint160 i = 0; i < 256; ++i) {
+            address __receiver = address(uint160(_receiver) ^ i);
+
+            // if known non-owner is the recipient, revert
+            stakingDistributor.setAccountEarnedData(
+                address(this), _rewarded, _reward, BaseRewardStreams.EarnStorage(1, 0)
+            );
+            if (i != 0) vm.expectRevert(BaseRewardStreams.InvalidRecipient.selector);
+            stakingDistributor.claimReward(_rewarded, _reward, __receiver, _forfeitRecentReward);
+
+            trackingDistributor.setAccountEarnedData(
+                address(this), _rewarded, _reward, BaseRewardStreams.EarnStorage(1, 0)
+            );
+            if (i != 0) vm.expectRevert(BaseRewardStreams.InvalidRecipient.selector);
+            trackingDistributor.claimReward(_rewarded, _reward, __receiver, _forfeitRecentReward);
+
+            stakingDistributor.setAccountEarnedData(address(0), _rewarded, _reward, BaseRewardStreams.EarnStorage(1, 0));
+            if (i != 0) vm.expectRevert(BaseRewardStreams.InvalidRecipient.selector);
+            stakingDistributor.claimSpilloverReward(_rewarded, _reward, __receiver);
+
+            trackingDistributor.setAccountEarnedData(
+                address(0), _rewarded, _reward, BaseRewardStreams.EarnStorage(1, 0)
+            );
+            if (i != 0) vm.expectRevert(BaseRewardStreams.InvalidRecipient.selector);
+            trackingDistributor.claimSpilloverReward(_rewarded, _reward, __receiver);
+        }
     }
 }
