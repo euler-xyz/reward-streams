@@ -65,6 +65,7 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
     }
 
     /// @notice Allows a user to unstake rewarded tokens.
+    /// @dev This function reverts if the recipient is zero address or is a known non-owner EVC account.
     /// @dev If the amount is max, the entire balance of the user is unstaked.
     /// @param rewarded The address of the rewarded token.
     /// @param recipient The address to receive the unstaked tokens.
