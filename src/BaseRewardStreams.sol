@@ -25,7 +25,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @notice The maximum number of epochs that a reward stream can live for.
     uint256 public constant MAX_DISTRIBUTION_LENGTH = 25;
 
-    /// @notice The maximum number of streams enabled per account and reward token.
+    /// @notice The maximumum number of reward tokens enabled per account and rewarded token.
     uint256 public constant MAX_REWARDS_ENABLED = 5;
 
     /// @notice The minimum duration of an epoch.
