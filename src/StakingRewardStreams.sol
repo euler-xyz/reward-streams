@@ -109,7 +109,7 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
 
         accountStorage.balance = currentAccountBalance - amount;
 
-        IERC20(rewarded).safeTransfer(recipient, amount);
+        pushToken(IERC20(rewarded), recipient, amount);
 
         emit Unstaked(msgSender, rewarded, amount);
     }

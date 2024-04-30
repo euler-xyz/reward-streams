@@ -82,6 +82,36 @@ contract StakingTest is Test {
         // stake malicious
         vm.expectRevert(BaseRewardStreams.InvalidAmount.selector);
         distributor.stake(rewardedMalicious, amount);
+        vm.stopPrank();
+
+        // stake max from recipient
+        vm.startPrank(recipient);
+        MockERC20(rewarded).approve(address(distributor), type(uint256).max);
+        distributor.stake(rewarded, type(uint256).max);
+
+        // unstake to zero address
+        vm.expectRevert(BaseRewardStreams.InvalidRecipient.selector);
+        distributor.unstake(rewarded, type(uint256).max, address(0), false);
+
+        // register the receiver as the owner on the EVC
+        assertEq(evc.getAccountOwner(recipient), address(0));
+        evc.call(address(0), recipient, 0, "");
+        assertEq(evc.getAccountOwner(recipient), recipient);
+
+        for (uint160 i = 1; i < 256; ++i) {
+            address _recipient = address(uint160(recipient) ^ i);
+
+            // if known non-owner is the recipient, revert
+            vm.expectRevert(BaseRewardStreams.InvalidRecipient.selector);
+            distributor.unstake(rewarded, type(uint256).max, _recipient, false);
+        }
+
+        // but if owner is the recipient, it should work
+        preBalanceRecipient = MockERC20(rewarded).balanceOf(recipient);
+        preBalanceDistributor = MockERC20(rewarded).balanceOf(address(distributor));
+        distributor.unstake(rewarded, type(uint256).max, recipient, false);
+        assertEq(MockERC20(rewarded).balanceOf(recipient), preBalanceRecipient + preBalanceDistributor);
+        assertEq(MockERC20(rewarded).balanceOf(address(distributor)), 0);
 
         vm.stopPrank();
     }
