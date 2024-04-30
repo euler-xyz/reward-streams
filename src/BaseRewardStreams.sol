@@ -396,8 +396,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         address reward,
         uint48 epoch
     ) public view virtual override returns (uint256) {
-        DistributionStorage storage distributionStorage = distributions[rewarded][reward];
-        return distributionStorage.amounts[epoch / EPOCHS_PER_SLOT][epoch % EPOCHS_PER_SLOT];
+        return rewardAmount(distributions[rewarded][reward], epoch);
     }
 
     /// @notice Returns the current epoch based on the block timestamp.
@@ -442,6 +441,17 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         if (token.balanceOf(address(this)) - preBalance != amount) {
             revert InvalidAmount();
         }
+    }
+
+    /// @notice Returns the reward token amount for an epoch, given a pre-computed distribution storage pointer.
+    /// @param distributionStorage Pre-computed distribution storage pointer.
+    /// @param epoch The epoch to get the reward token amount for.
+    /// @return The reward token amount.
+    function rewardAmount(
+        DistributionStorage storage distributionStorage,
+        uint48 epoch
+    ) internal view returns (uint256) {
+        return distributionStorage.amounts[epoch / EPOCHS_PER_SLOT][epoch % EPOCHS_PER_SLOT];
     }
 
     /// @notice Increases the reward token amounts for a specific rewarded token.
@@ -574,7 +584,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             for (uint48 epoch = epochStart; epoch < epochEnd; ++epoch) {
                 // Overflow safe because `totalRegistered * SCALER <= type(uint144).max < type(uint256).max`.
                 unchecked {
-                    uint256 amount = distributionStorage.amounts[epoch / EPOCHS_PER_SLOT][epoch % EPOCHS_PER_SLOT];
+                    uint256 amount = rewardAmount(distributionStorage, epoch);
                     delta += SCALER * timeElapsedInEpoch(epoch, lastUpdated) * amount / EPOCH_DURATION;
                 }
             }
