@@ -8,6 +8,10 @@ import "./IBalanceTracker.sol";
 /// @author Euler Labs (https://www.eulerlabs.com/)
 /// @notice Interface for Reward Streams distributor contract.
 interface IRewardStreams {
+    function EPOCH_DURATION() external view returns (uint256);
+    function MAX_EPOCHS_AHEAD() external view returns (uint256);
+    function MAX_DISTRIBUTION_LENGTH() external view returns (uint256);
+    function MAX_REWARDS_ENABLED() external view returns (uint256);
     function registerReward(address rewarded, address reward, uint48 startEpoch, uint128[] calldata rewardAmounts) external;
     function updateReward(address rewarded, address reward) external;
     function claimReward(address rewarded, address reward, address recipient, bool forfeitRecentReward) external;
@@ -26,7 +30,6 @@ interface IRewardStreams {
     function getEpoch(uint48 timestamp) external view returns (uint48);
     function getEpochStartTimestamp(uint48 epoch) external view returns (uint48);
     function getEpochEndTimestamp(uint48 epoch) external view returns (uint48);
-    function EPOCH_DURATION() external view returns (uint256);
 }
 
 /// @title ITrackingRewardStreams

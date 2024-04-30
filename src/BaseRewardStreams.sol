@@ -10,56 +10,34 @@ import {IRewardStreams} from "./interfaces/IRewardStreams.sol";
 
 /// @title BaseRewardStreams
 /// @author Euler Labs (https://www.eulerlabs.com/)
-/// @notice This contract is a base class for rewards distributors that allow anyone to register a reward scheme for a
-/// rewarded token.
+/// @notice Base class that allows anyone to register a reward distribution stream for a given token.
 abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using Set for SetStorage;
 
+    /// @notice The duration of a reward epoch.
+    /// @dev Must be longer than 7 days.
     uint256 public immutable EPOCH_DURATION;
+
+    /// @notice The maximum number of epochs in the future that newly registered reward streams can begin.
     uint256 public constant MAX_EPOCHS_AHEAD = 5;
+
+    /// @notice The maximum number of epochs that a reward stream can live for.
     uint256 public constant MAX_DISTRIBUTION_LENGTH = 25;
+
+    /// @notice The maximum number of streams enabled per account and reward token.
     uint256 public constant MAX_REWARDS_ENABLED = 5;
+
+    /// @notice The minimum duration of an epoch.
     uint256 internal constant MIN_EPOCH_DURATION = 7 days;
+
+    /// @notice The number of epoch distribution amounts packed in a storage slot.
     uint256 internal constant EPOCHS_PER_SLOT = 2;
 
-    // this value is used to increase the precision of the calculations due to the fact that distributed amount of
-    // rewards must be divided by the total eligible amount. 1e12 value is carefully chosen to allow big enough
-    // total registered amount, per rewarded and reward token pair, while not allowing the accumulator to overflow.
+    /// @notice A scaling factor for precise amount calculation.
+    /// @dev Increases precision when dividing an account's distributed amount by the total eligible amount.
+    /// Allows a sufficiently large total registered amount per rewarded and reward token pair without overflowing.
     uint256 internal constant SCALER = 1e12;
-
-    /// @notice Event emitted when a reward scheme is registered.
-    event RewardRegistered(
-        address indexed caller, address indexed rewarded, address indexed reward, uint256 startEpoch, uint128[] amounts
-    );
-
-    /// @notice Event emitted when a user enables a reward token.
-    event RewardEnabled(address indexed account, address indexed rewarded, address indexed reward);
-
-    /// @notice Event emitted when a user disables a reward token.
-    event RewardDisabled(address indexed account, address indexed rewarded, address indexed reward);
-
-    /// @notice Event emitted when a reward token is claimed.
-    event RewardClaimed(address indexed account, address indexed rewarded, address indexed reward, uint256 amount);
-
-    /// @notice Epoch-related error. Thrown when epoch duration or start epoch is invalid.
-    error InvalidEpoch();
-
-    /// @notice Amount-related error. Thrown when the reward amount is invalid or invalid amount of tokens was
-    /// transferred.
-    error InvalidAmount();
-
-    /// @notice Distribution-related error. Thrown when the reward distribution length is invalid.
-    error InvalidDistribution();
-
-    /// @notice Accumulator-related error. Thrown when the registered reward amount may cause an accumulator overflow.
-    error AccumulatorOverflow();
-
-    /// @notice Rewards-related error. Thrown when user tries to enable too many rewards.
-    error TooManyRewardsEnabled();
-
-    /// @notice Recipient-related error. Throws when the recipient is invalid.
-    error InvalidRecipient();
 
     /// @notice Struct to store distribution data per rewarded and reward tokens.
     struct DistributionStorage {
@@ -101,6 +79,39 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @notice Stored account data per address and rewarded token.
     mapping(address account => mapping(address rewarded => AccountStorage)) internal accounts;
 
+    /// @notice Event emitted when a reward stream is registered.
+    event RewardRegistered(
+        address indexed caller, address indexed rewarded, address indexed reward, uint256 startEpoch, uint128[] amounts
+    );
+
+    /// @notice Event emitted when a user enables a reward token.
+    event RewardEnabled(address indexed account, address indexed rewarded, address indexed reward);
+
+    /// @notice Event emitted when a user disables a reward token.
+    event RewardDisabled(address indexed account, address indexed rewarded, address indexed reward);
+
+    /// @notice Event emitted when a reward token is claimed.
+    event RewardClaimed(address indexed account, address indexed rewarded, address indexed reward, uint256 amount);
+
+    /// @notice Epoch-related error. Thrown when epoch duration or start epoch is invalid.
+    error InvalidEpoch();
+
+    /// @notice Amount-related error. Thrown when the reward amount is invalid or invalid amount of tokens was
+    /// transferred.
+    error InvalidAmount();
+
+    /// @notice Distribution-related error. Thrown when the reward distribution length is invalid.
+    error InvalidDistribution();
+
+    /// @notice Accumulator-related error. Thrown when the registered reward amount may cause an accumulator overflow.
+    error AccumulatorOverflow();
+
+    /// @notice Rewards-related error. Thrown when user tries to enable too many rewards.
+    error TooManyRewardsEnabled();
+
+    /// @notice Recipient-related error. Thrown when the recipient is invalid.
+    error InvalidRecipient();
+
     /// @notice Constructor for the BaseRewardStreams contract.
     /// @param _evc The Ethereum Vault Connector contract.
     /// @param _epochDuration The duration of an epoch.
@@ -112,11 +123,11 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         EPOCH_DURATION = _epochDuration;
     }
 
-    /// @notice Registers a new reward scheme.
+    /// @notice Registers a new reward stream.
     /// @param rewarded The rewarded token.
     /// @param reward The reward token.
-    /// @param startEpoch The epoch to start the reward scheme from.
-    /// @param rewardAmounts The reward token amounts for each epoch of the reward scheme.
+    /// @param startEpoch The epoch to start the reward stream from.
+    /// @param rewardAmounts The reward token amounts for each epoch of the reward stream.
     function registerReward(
         address rewarded,
         address reward,
@@ -135,12 +146,12 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             revert InvalidEpoch();
         }
 
-        // Distribution scheme should be at most MAX_DISTRIBUTION_LENGTH epochs long.
+        // Distribution stream should be at most MAX_DISTRIBUTION_LENGTH epochs long.
         if (rewardAmounts.length > MAX_DISTRIBUTION_LENGTH) {
             revert InvalidDistribution();
         }
 
-        // Calculate the total amount to be distributed in this distribution scheme.
+        // Calculate the total amount to be distributed in this distribution stream.
         uint256 totalAmount;
         for (uint256 i = 0; i < rewardAmounts.length; ++i) {
             totalAmount += rewardAmounts[i];
@@ -351,20 +362,6 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         return rewardAmount(rewarded, reward, currentEpoch());
     }
 
-    /// @notice Returns the reward token amount for a specific rewarded token and epoch.
-    /// @param rewarded The address of the rewarded token.
-    /// @param reward The address of the reward token.
-    /// @param epoch The epoch to get the reward token amount for.
-    /// @return The reward token amount for the rewarded token and epoch.
-    function rewardAmount(
-        address rewarded,
-        address reward,
-        uint48 epoch
-    ) public view virtual override returns (uint256) {
-        DistributionStorage storage distributionStorage = distributions[rewarded][reward];
-        return distributionStorage.amounts[epoch / EPOCHS_PER_SLOT][epoch % EPOCHS_PER_SLOT];
-    }
-
     /// @notice Returns the total supply of the rewarded token enabled and eligible to receive the reward token.
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
@@ -387,6 +384,20 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @return The total reward token amount claimed for the rewarded token.
     function totalRewardClaimed(address rewarded, address reward) external view returns (uint256) {
         return distributions[rewarded][reward].totalClaimed;
+    }
+
+    /// @notice Returns the reward token amount for a specific rewarded token and epoch.
+    /// @param rewarded The address of the rewarded token.
+    /// @param reward The address of the reward token.
+    /// @param epoch The epoch to get the reward token amount for.
+    /// @return The reward token amount for the rewarded token and epoch.
+    function rewardAmount(
+        address rewarded,
+        address reward,
+        uint48 epoch
+    ) public view virtual override returns (uint256) {
+        DistributionStorage storage distributionStorage = distributions[rewarded][reward];
+        return distributionStorage.amounts[epoch / EPOCHS_PER_SLOT][epoch % EPOCHS_PER_SLOT];
     }
 
     /// @notice Returns the current epoch based on the block timestamp.
@@ -415,6 +426,22 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @return The end timestamp for the given epoch.
     function getEpochEndTimestamp(uint48 epoch) public view override returns (uint48) {
         return uint48(getEpochStartTimestamp(epoch) + EPOCH_DURATION);
+    }
+
+    /// @notice Transfers a specified amount of a token from a given address to this contract.
+    /// @dev This function uses `SafeERC20.safeTransferFrom` function to move tokens.
+    /// It checks the balance before and after the transfer to ensure the correct amount has been transferred.
+    /// If the transferred amount does not match the expected amount, it reverts.
+    /// @param token The ERC20 token to transfer.
+    /// @param from The address to transfer the tokens from.
+    /// @param amount The amount of tokens to transfer.
+    function pullToken(IERC20 token, address from, uint256 amount) internal {
+        uint256 preBalance = token.balanceOf(address(this));
+        token.safeTransferFrom(from, address(this), amount);
+
+        if (token.balanceOf(address(this)) - preBalance != amount) {
+            revert InvalidAmount();
+        }
     }
 
     /// @notice Increases the reward token amounts for a specific rewarded token.
@@ -548,7 +575,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
                 // Overflow safe because `totalRegistered * SCALER <= type(uint144).max < type(uint256).max`.
                 unchecked {
                     uint256 amount = distributionStorage.amounts[epoch / EPOCHS_PER_SLOT][epoch % EPOCHS_PER_SLOT];
-                    delta += SCALER * _timeElapsedInEpoch(epoch, lastUpdated) * amount / EPOCH_DURATION;
+                    delta += SCALER * timeElapsedInEpoch(epoch, lastUpdated) * amount / EPOCH_DURATION;
                 }
             }
 
@@ -574,22 +601,6 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         claimable += uint112(uint256(accumulator - accountEarnStorage.accumulator) * currentAccountBalance / SCALER);
     }
 
-    /// @notice Transfers a specified amount of a token from a given address to this contract.
-    /// @dev This function uses `SafeERC20.safeTransferFrom` function to move tokens.
-    /// It checks the balance before and after the transfer to ensure the correct amount has been transferred.
-    /// If the transferred amount does not match the expected amount, it reverts.
-    /// @param token The ERC20 token to transfer.
-    /// @param from The address to transfer the tokens from.
-    /// @param amount The amount of tokens to transfer.
-    function pullToken(IERC20 token, address from, uint256 amount) internal {
-        uint256 preBalance = token.balanceOf(address(this));
-        token.safeTransferFrom(from, address(this), amount);
-
-        if (token.balanceOf(address(this)) - preBalance != amount) {
-            revert InvalidAmount();
-        }
-    }
-
     /// @notice Calculates the time elapsed within a given epoch.
     /// @dev This function compares the current block timestamp with the start and end timestamps of the epoch.
     /// @dev If the epoch is ongoing, it calculates the time elapsed since the last update or the start of the epoch,
@@ -601,7 +612,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @param epoch The epoch for which to calculate the time elapsed.
     /// @param lastUpdated The timestamp of the last update.
     /// @return The time elapsed in the given epoch.
-    function _timeElapsedInEpoch(uint48 epoch, uint48 lastUpdated) internal view returns (uint256) {
+    function timeElapsedInEpoch(uint48 epoch, uint48 lastUpdated) internal view returns (uint256) {
         // Get the start and end timestamps for the given epoch.
         uint256 startTimestamp = getEpochStartTimestamp(epoch);
         uint256 endTimestamp = getEpochEndTimestamp(epoch);
