@@ -106,8 +106,8 @@ contract BaseRewardStreamsHarness is BaseRewardStreams {
         accounts[account][rewarded].earned[reward] = earnStorage;
     }
 
-    function timeElapsedInEpoch(uint48 epoch, uint48 lastUpdated) external view returns (uint256) {
-        return _timeElapsedInEpoch(epoch, lastUpdated);
+    function getTimeElapsedInEpoch(uint48 epoch, uint48 lastUpdated) external view returns (uint256) {
+        return timeElapsedInEpoch(epoch, lastUpdated);
     }
 
     function msgSender() external view returns (address) {

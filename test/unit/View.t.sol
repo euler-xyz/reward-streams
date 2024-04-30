@@ -97,7 +97,7 @@ contract ViewTest is Test {
         lastUpdated = uint48(bound(lastUpdated, 0, blockTimestamp));
 
         vm.warp(blockTimestamp);
-        assertEq(distributor.timeElapsedInEpoch(epoch, lastUpdated), 0);
+        assertEq(distributor.getTimeElapsedInEpoch(epoch, lastUpdated), 0);
     }
 
     function test_EpochIsOngoing_TimeElapsedInEpoch(
@@ -114,10 +114,10 @@ contract ViewTest is Test {
         vm.warp(blockTimestamp);
 
         if (lastUpdated > distributor.getEpochStartTimestamp(epoch)) {
-            assertEq(distributor.timeElapsedInEpoch(epoch, lastUpdated), block.timestamp - lastUpdated);
+            assertEq(distributor.getTimeElapsedInEpoch(epoch, lastUpdated), block.timestamp - lastUpdated);
         } else {
             assertEq(
-                distributor.timeElapsedInEpoch(epoch, lastUpdated),
+                distributor.getTimeElapsedInEpoch(epoch, lastUpdated),
                 block.timestamp - distributor.getEpochStartTimestamp(epoch)
             );
         }
@@ -132,11 +132,11 @@ contract ViewTest is Test {
 
         if (lastUpdated > distributor.getEpochStartTimestamp(epoch)) {
             assertEq(
-                distributor.timeElapsedInEpoch(epoch, lastUpdated),
+                distributor.getTimeElapsedInEpoch(epoch, lastUpdated),
                 distributor.getEpochEndTimestamp(epoch) - lastUpdated
             );
         } else {
-            assertEq(distributor.timeElapsedInEpoch(epoch, lastUpdated), distributor.EPOCH_DURATION());
+            assertEq(distributor.getTimeElapsedInEpoch(epoch, lastUpdated), distributor.EPOCH_DURATION());
         }
     }
 

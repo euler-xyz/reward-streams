@@ -9,7 +9,6 @@ Reward Streams is a powerful and flexible implementation of the billion-dollar a
 ```
 .
 ├── interfaces
-│   ├── IBalanceForwarder.sol
 │   ├── IBalanceTracker.sol
 │   └── IRewardStreams.sol
 ├── BaseRewardStreams.sol
@@ -184,6 +183,7 @@ The Reward Streams are currently undergoing security audits and should not be us
 The code is currently in an experimental phase. Feedback or ideas for improving the Reward Streams are appreciated. Contributions are welcome from anyone interested in conducting security research, writing more tests including formal verification, improving readability and documentation, optimizing, simplifying, or developing integrations.
 
 ## License
+(c) 2024 Euler Labs Ltd.
 
 Licensed under the [GPL-2.0-or-later](https://github.com/euler-xyz/reward-streams/tree/master/LICENSE) license.
 
