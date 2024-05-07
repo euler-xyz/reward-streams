@@ -9,13 +9,14 @@ address constant DEFAULT_TEST_CONTRACT = 0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b
 address constant MULTICALL3_ADDRESS = 0xcA11bde05977b3631167028862bE2a173976CA11;
 address constant FIRST_DEPLOYED_CONTRACT = 0x2e234DAe75C793f67A35089C9d99245E1C58470b;
 
-/// @dev Exclude Foundry precompiles and predeploys.
+/// @dev Exclude Foundry precompiles, predeploys and addresses with already deployed code.
 /// These addresses can make certain test cases that call/mockCall to them fail.
 /// List of Foundry precompiles: https://book.getfoundry.sh/misc/precompile-registry
-function boundAddr(address addr) pure returns (address) {
+function boundAddr(address addr) view returns (address) {
     if (
         uint160(addr) < 10 || addr == VM_ADDRESS || addr == CONSOLE || addr == CREATE2_FACTORY
             || addr == DEFAULT_TEST_CONTRACT || addr == MULTICALL3_ADDRESS || addr == FIRST_DEPLOYED_CONTRACT
+            || addr.code.length != 0
     ) {
         return address(uint160(addr) + 10);
     }
