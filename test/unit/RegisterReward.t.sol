@@ -282,7 +282,7 @@ contract RegisterRewardTest is Test {
         uint128[] memory amounts = new uint128[](1);
         amounts[0] = 1;
 
-        uint128 maxRegistered = uint128(type(uint144).max / 1e12);
+        uint128 maxRegistered = uint128(type(uint160).max / 2e19);
 
         // initialize the distribution data and set the total registered amount to the max value
         distributor.setDistributionData(rewarded, reward, uint48(1), 0, 0, maxRegistered, 0);

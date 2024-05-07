@@ -118,8 +118,21 @@ Unlike other permissioned distributors based on the billion-dollar algorithm, Re
 1. **Epoch duration may not be shorter than 7 days**: This limitation is in place to ensure the stability and efficiency of the distribution system. The longer the epoch, the more gas efficient the distribution is.
 2. **New reward stream may start at most 5 epochs ahead and be at most 25 epochs long**: This limitation is in place not to register distribution too far in the future and lasting for too long.
 3. **A user may have at most 5 rewards enabled at a time for a given rewarded token**: This limitation is in place to prevent users from enabling an excessive number of rewards, which could lead to increased gas costs and potential system instability.
-4. **A user may have at most `type(uint112).max` unclaimed reward tokens per rewarded token**: This limitation is in place to efficiently pack variables in storage, optimizing for gas costs and contract performance.
-5. **During its lifetime, a distributor may distribute at most `type(uint144).max / 1e12` units of a reward token per rewarded token**: This limitation is in place not to allow accumulator overflow.
+4. **During its lifetime, a distributor may distribute at most `type(uint160).max / 2e19` units of a reward token per rewarded token**: This limitation is in place not to allow accumulator overflow.
+5. **Not all rewarded-reward token pairs may be compatible with the distributor**: This limitation may occur due to unfortunate rounding errors during internal calculations, which can result in registered rewards being irrevocably lost. To avoid this, one must ensure that the following condition, based on an empirical formula, holds true:
+
+`6e6 * block_time_sec * expected_apr_percent * 10**reward_token_decimals * price_of_rewarded_token / 10**rewarded_token_decimals / price_of_reward_token > 1`
+
+For example, for the SHIB-USDC reward-rewarded pair, the above condition will not be met, even with an unusually high assumed APR of 1000%:
+`block_time_sec = 12`
+`expected_apr_percent = 1000`
+`rewarded_token_decimals = 18`
+`reward_token_decimals = 6`
+`price_of_rewarded_token = 0.00002`
+`price_of_reward_token = 1`
+
+`6e6 * 12 * 1000 * 10**6 * 0.00002 / 10**18 / 1` is less than `1`.
+
 6. **If nobody earns rewards at the moment (i.e. nobody staked/deposited yet), they're being virtually accrued by address(0) and may be claimed by anyone**: This feature is designed to prevent reward tokens from being lost when nobody earns them at the moment. However, it also means that unclaimed rewards could potentially be claimed by anyone.
 7. **Distributor contracts do not have an owner or admin meaning that none of the assets can be directly recovered from them**: This feature is required for the system to work in a permissionless manner. However, it also means that if a mistake is made in the distribution of rewards, the assets cannot be directly recovered from the distributor contracts.
 

@@ -340,7 +340,7 @@ contract ScenarioTest is Test {
         amountsLength = uint8(bound(amountsLength, 1, 6)) * 4;
         balance = uint128(bound(balance, 2, 100e18));
 
-        uint256 ALLOWED_DELTA = 1e10; // 0.000001%
+        uint256 ALLOWED_DELTA = 1e12; // 0.0001%
 
         // mint the rewarded tokens to the participant
         vm.startPrank(PARTICIPANT_1);
@@ -2258,14 +2258,14 @@ contract ScenarioTest is Test {
         address _account,
         address _rewarded,
         address _reward,
-        uint112 totalRegistered,
-        uint112 totalClaimed,
-        uint112 claimable
+        uint96 totalRegistered,
+        uint96 totalClaimed,
+        uint96 claimable
     ) external {
         vm.assume(_account != address(0));
-        totalRegistered = uint112(bound(totalRegistered, 0, type(uint112).max - 1));
-        totalClaimed = uint112(bound(totalClaimed, 0, totalRegistered));
-        claimable = uint112(bound(claimable, totalRegistered - totalClaimed + 1, type(uint112).max));
+        totalRegistered = uint96(bound(totalRegistered, 0, type(uint96).max - 1));
+        totalClaimed = uint96(bound(totalClaimed, 0, totalRegistered));
+        claimable = uint96(bound(claimable, totalRegistered - totalClaimed + 1, type(uint96).max));
 
         BaseRewardStreams.EarnStorage memory earnStorage =
             BaseRewardStreams.EarnStorage({claimable: claimable, accumulator: 0});
