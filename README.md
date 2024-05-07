@@ -1,6 +1,6 @@
 # Reward Streams - Efficient and Flexible Reward Distribution
 
-Reward Streams is a powerful and flexible implementation of the billion-dollar algorithm, a popular method for proportional reward distribution in the Ethereum developer community. This project extends the algorithm's functionality to support both staking and staking-free (based on balance changes tracking) reward distribution, multiple reward tokens, and permissionless registration of reward distribution schemes. This makes Reward Streams a versatile tool for incentivizing token staking and holding in a variety of use cases.
+Reward Streams is a powerful and flexible implementation of the billion-dollar algorithm, a popular method for proportional reward distribution in the Ethereum developer community. This project extends the algorithm's functionality to support both staking and staking-free (based on balance changes tracking) reward distribution, multiple reward tokens, and permissionless registration of reward distribution schemes (reward streams). This makes Reward Streams a versatile tool for incentivizing token staking and holding in a variety of use cases.
 
 ---
 
@@ -32,10 +32,10 @@ Reward Streams was developed to address these limitations and provide a more fle
 
 1. A common base contract (`BaseRewardStreams`) that is reused by both staking and balance-tracking mechanisms of rewards distribution.
 2. An easy-to-use mechanism for balance-tracking reward distribution, which requires only a subtle change to the ERC-20 token contract.
-3. A permissionless mechanism to create a reward distribution scheme, enabling anyone to incentivize staking/holding of any token with any reward.
+3. A permissionless mechanism to create a reward stream, enabling anyone to incentivize staking/holding of any token with any reward.
 4. The ability for users to earn up to 5 different reward tokens simultaneously for staking/holding of a single rewarded token.
 5. Additive, fixed length epoch-based distribution of rewards where the reward rate may differ from epoch to epoch.
-6. A mechanism allowing to create a reward distribution scheme for up to 25 epochs in one go.
+6. A mechanism allowing to create a reward stream for up to 25 epochs in one go.
 7. Protection against reward tokens being lost in case nobody earns them.
 
 ## How does it work?
@@ -54,9 +54,9 @@ The staking `StakingRewardStreams` implementation also inherits from the `BaseRe
 
 In both modes, each distributor contract defines an `EPOCH_DURATION` constant, which is the duration of a single epoch. This duration cannot be less than 7 days. 
 
-When registering a new `reward` distribution scheme for the `rewarded` token, one needs to specify the `startEpoch` number when the new distribution scheme will come into effect. `startEpoch` cannot be more than 5 epochs into the future. Moreover, one needs to specify `rewardAmounts` array which instructs the contract how much `reward` one wants to distribute in each epoch starting from `startEpoch`. The `rewardAmounts` array must have a length of at most 25.
+When registering a new reward stream for the `rewarded` token, one needs to specify the `startEpoch` number when the new stream will come into effect. `startEpoch` cannot be more than 5 epochs into the future. Moreover, one needs to specify `rewardAmounts` array which instructs the contract how much `reward` one wants to distribute in each epoch starting from `startEpoch`. The `rewardAmounts` array must have a length of at most 25.
 
-If rewarded epochs of multiple distribution schemes overlap, the amounts will be combined and the effective distribution will be the sum of the amounts in the overlapping epochs.
+If rewarded epochs of multiple reward streams overlap, the amounts will be combined and the effective distribution will be the sum of the amounts in the overlapping epochs.
 
 ---
 
@@ -67,10 +67,10 @@ Let's consider a scenario where Alice and Bob want to incentivize `ABC` token st
 Alice wants to distribute `DEF` reward for 3 epochs starting from the next epoch. She specifies the `rewardAmounts` array as follows:
 `rewardAmounts = [1e18, 1e18, 1e18]`. This means Alice wants to distribute 1 `DEF` token per epoch for the next 3 epochs.
 
-Bob, on the other hand, wants to incentivize staking of the same `ABC` token with the same `DEF` reward. He wants to distribute `DEF` reward for 5 epochs starting one epoch later than Alice's distribution scheme. He specifies the `rewardAmounts` array as follows:
+Bob, on the other hand, wants to incentivize staking of the same `ABC` token with the same `DEF` reward. He wants to distribute `DEF` reward for 5 epochs starting one epoch later than Alice's reward stream. He specifies the `rewardAmounts` array as follows:
 `rewardAmounts = [2e18, 2e18, 2e18, 2e18, 2e18]`. This means Bob wants to distribute 2 `DEF` tokens per epoch for the next 5 epochs, starting one epoch after Alice.
 
-Considering that the amounts for the overlapping epochs get added, the effective distribution scheme will start from the next epoch and will look as follows:
+Considering that the amounts for the overlapping epochs get added, the effective reward stream will start from the next epoch and will look as follows:
 `rewardAmounts = [1e18, 3e18, 3e18, 2e18, 2e18, 2e18]`
 
 This means that in the first epoch, 1 `DEF` token will be distributed. In the second and third epoch, 3 `DEF` tokens will be distributed each. In the fourth, fifth, and sixth epoch, 2 `DEF` tokens will be distributed each.
@@ -99,7 +99,7 @@ Given this, Alice decides to enable only the `GHI` reward and keep the `DEF` rew
 
 Multiple functions of the distributors contain an additional boolean parameter called `forfeitRecentReward`. It allows a user to optimize gas consumption in case it is not worth to iterate over multiple distribution epochs and updating contract storage. It also allows for "emergency exit" for operations like disabling reward and claiming, and DOS protection (i.e. in liquidation flows).
 
-As previously explained, rewards distributions are epoch-based. Thanks to that, each epoch may have a different reward rate, but also it is possible for the distribution schemes to be registered permissionlessly in additive manner. However, the downside of this approach is the fact that whenever a user stakes or unstakes (or, for balance-tracking version of the distributor, transfers/mints/burns the rewarded token), the distributor contract needs to iterate over all the epochs since the last time given distribution, defined by `rewarded` and `reward` token, was updated. Moreover, a user may be earning multiple rewards for a single rewarded token, so the distributor contract needs to iterate over all the epochs since the last update for all the rewards the user is earning. If updates happen rarely (i.e. due to low staking/unstaking activity of the `rewarded` token for a given `reward`), the gas cost associated with iterating may be significant, affecting user's profitability. Hence, when disabling or claiming reward, if the user wants to skip the epochs iteration, they can call the relevant function with `forfeitRecentReward` set to `true`. This will grant the rewards earned since the last distribution update, which would normally be earned by the user, to the rest of the distribution participants, lowering the gas cost for the user.
+As previously explained, rewards distributions are epoch-based. Thanks to that, each epoch may have a different reward rate, but also it is possible for the reward streams to be registered permissionlessly in additive manner. However, the downside of this approach is the fact that whenever a user stakes or unstakes (or, for balance-tracking version of the distributor, transfers/mints/burns the rewarded token), the distributor contract needs to iterate over all the epochs since the last time given distribution, defined by `rewarded` and `reward` token, was updated. Moreover, a user may be earning multiple rewards for a single rewarded token, so the distributor contract needs to iterate over all the epochs since the last update for all the rewards the user is earning. If updates happen rarely (i.e. due to low staking/unstaking activity of the `rewarded` token for a given `reward`), the gas cost associated with iterating may be significant, affecting user's profitability. Hence, when disabling or claiming reward, if the user wants to skip the epochs iteration, they can call the relevant function with `forfeitRecentReward` set to `true`. This will grant the rewards earned since the last distribution update, which would normally be earned by the user, to the rest of the distribution participants, lowering the gas cost for the user.
 
 `forfeitRecentReward` parameter may also come handy for the rewarded token contract which calls `balanceTrackerHook` on the balance changes. In case of i.e. liquidation, where user may have incentive to perform DOS attack and increase gas cost of the token transfer by enabling multiple rewards for distributions of low activity, the rewarded token contract may call `balanceTrackerHook` with `forfeitRecentReward` set to `true` to lower the gas cost of the transfer. Unfortunately, this may lead to the user losing part of their rewards.
 
@@ -111,12 +111,12 @@ Alice staked her `ABC` and decided to enable both `DEF` and `GHI` rewards. Alice
 
 ---
 
-Unlike other permissioned distributors based on the billion-dollar algorithm, Reward Streams distributors do not have an owner or admin meaning that none of the assets can be directly recovered from them. This property is required in order for the system to work in a permissionless manner, allowing anyone to transfer rewards token to a distributor and register a new distribution scheme. The drawback of this approach is that reward tokens may get lost if nobody earns them at the given moment (i.e. nobody stakes required assets or nobody enabled earning those rewards). In order to prevent reward tokens from being lost when nobody earns them at the moment, the rewards get virtually accrued by address(0) and, in exchange for updating given distribution data, are claimable by anyone with use of `updateReward` function.
+Unlike other permissioned distributors based on the billion-dollar algorithm, Reward Streams distributors do not have an owner or admin meaning that none of the assets can be directly recovered from them. This property is required in order for the system to work in a permissionless manner, allowing anyone to transfer rewards token to a distributor and register a new reward stream. The drawback of this approach is that reward tokens may get lost if nobody earns them at the given moment (i.e. nobody stakes required assets or nobody enabled earning those rewards). In order to prevent reward tokens from being lost when nobody earns them at the moment, the rewards get virtually accrued by address(0) and, in exchange for updating given distribution data, are claimable by anyone with use of `updateReward` function.
 
 ## Known limitations
 
 1. **Epoch duration may not be shorter than 7 days**: This limitation is in place to ensure the stability and efficiency of the distribution system. The longer the epoch, the more gas efficient the distribution is.
-2. **New distribution scheme may start at most 5 epochs ahead and be at most 25 epochs long**: This limitation is in place not to register distribution too far in the future and lasting for too long.
+2. **New reward stream may start at most 5 epochs ahead and be at most 25 epochs long**: This limitation is in place not to register distribution too far in the future and lasting for too long.
 3. **A user may have at most 5 rewards enabled at a time for a given rewarded token**: This limitation is in place to prevent users from enabling an excessive number of rewards, which could lead to increased gas costs and potential system instability.
 4. **A user may have at most `type(uint112).max` unclaimed reward tokens per rewarded token**: This limitation is in place to efficiently pack variables in storage, optimizing for gas costs and contract performance.
 5. **During its lifetime, a distributor may distribute at most `type(uint144).max / 1e12` units of a reward token per rewarded token**: This limitation is in place not to allow accumulator overflow.
