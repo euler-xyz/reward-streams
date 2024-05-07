@@ -135,6 +135,7 @@ For example, for the SHIB-USDC reward-rewarded pair, the above condition will no
 
 6. **If nobody earns rewards at the moment (i.e. nobody staked/deposited yet), they're being virtually accrued by address(0) and may be claimed by anyone**: This feature is designed to prevent reward tokens from being lost when nobody earns them at the moment. However, it also means that unclaimed rewards could potentially be claimed by anyone.
 7. **Distributor contracts do not have an owner or admin meaning that none of the assets can be directly recovered from them**: This feature is required for the system to work in a permissionless manner. However, it also means that if a mistake is made in the distribution of rewards, the assets cannot be directly recovered from the distributor contracts.
+8. **Distributor contracts do not support rebasing and fee-on-transfer tokens**: This limitation is in place due to internal accounting system limitations. Neither reward nor rewarded tokens may be rebasing or fee-on-transfer tokens.
 
 ## Install
 
