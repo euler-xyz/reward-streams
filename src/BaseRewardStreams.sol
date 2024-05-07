@@ -31,6 +31,9 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @notice The minimum duration of an epoch.
     uint256 internal constant MIN_EPOCH_DURATION = 7 days;
 
+    /// @notice The maximum duration of an epoch.
+    uint256 internal constant MAX_EPOCH_DURATION = 10 * 7 days;
+
     /// @notice The number of epoch distribution amounts packed in a storage slot.
     uint256 internal constant EPOCHS_PER_SLOT = 2;
 
@@ -117,7 +120,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @param _evc The Ethereum Vault Connector contract.
     /// @param _epochDuration The duration of an epoch.
     constructor(address _evc, uint48 _epochDuration) EVCUtil(_evc) {
-        if (_epochDuration < MIN_EPOCH_DURATION) {
+        if (_epochDuration < MIN_EPOCH_DURATION || _epochDuration > MAX_EPOCH_DURATION) {
             revert InvalidEpoch();
         }
 

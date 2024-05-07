@@ -48,7 +48,7 @@ contract RegisterRewardTest is Test {
     }
 
     function test_RevertIfInvalidEpochDuration_Constructor(uint48 epochDuration) external {
-        if (epochDuration < 7 days) {
+        if (epochDuration < 7 days || epochDuration > 10 * 7 days) {
             vm.expectRevert(BaseRewardStreams.InvalidEpoch.selector);
         }
 
@@ -64,7 +64,7 @@ contract RegisterRewardTest is Test {
         uint8 amountsLength2,
         uint256 seed
     ) external {
-        epochDuration = uint48(bound(epochDuration, 7 days, 365 days));
+        epochDuration = uint48(bound(epochDuration, 7 days, 10 * 7 days));
         blockTimestamp = uint48(bound(blockTimestamp, 1, type(uint48).max - 50 * epochDuration));
         amountsLength0 = uint8(bound(amountsLength0, 1, 25));
         amountsLength1 = uint8(bound(amountsLength1, 1, 25));

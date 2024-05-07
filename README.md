@@ -52,7 +52,7 @@ In this mode, the rewarded token contract not only calls the `balanceTrackerHook
 
 The staking `StakingRewardStreams` implementation also inherits from the `BaseRewardStreams` contract. It defines two functions: `stake` and `unstake`, which are used to stake and unstake the rewarded token.
 
-In both modes, each distributor contract defines an `EPOCH_DURATION` constant, which is the duration of a single epoch. This duration cannot be less than 7 days. 
+In both modes, each distributor contract defines an `EPOCH_DURATION` constant, which is the duration of a single epoch. This duration cannot be less than 1 week and more than 10 weeks.
 
 When registering a new reward stream for the `rewarded` token, one needs to specify the `startEpoch` number when the new stream will come into effect. `startEpoch` cannot be more than 5 epochs into the future. Moreover, one needs to specify `rewardAmounts` array which instructs the contract how much `reward` one wants to distribute in each epoch starting from `startEpoch`. The `rewardAmounts` array must have a length of at most 25.
 
@@ -115,7 +115,7 @@ Unlike other permissioned distributors based on the billion-dollar algorithm, Re
 
 ## Known limitations
 
-1. **Epoch duration may not be shorter than 7 days**: This limitation is in place to ensure the stability and efficiency of the distribution system. The longer the epoch, the more gas efficient the distribution is.
+1. **Epoch duration may not be shorter than 1 week and longer than 10 weeks**: This limitation is in place to ensure the stability and efficiency of the distribution system. The longer the epoch, the more gas efficient the distribution is.
 2. **New reward stream may start at most 5 epochs ahead and be at most 25 epochs long**: This limitation is in place not to register distribution too far in the future and lasting for too long.
 3. **A user may have at most 5 rewards enabled at a time for a given rewarded token**: This limitation is in place to prevent users from enabling an excessive number of rewards, which could lead to increased gas costs and potential system instability.
 4. **During its lifetime, a distributor may distribute at most `type(uint160).max / 2e19` units of a reward token per rewarded token**: This limitation is in place not to allow accumulator overflow.
