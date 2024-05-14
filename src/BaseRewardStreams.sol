@@ -170,7 +170,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         if (distributionStorage.lastUpdated == 0) {
             distributionStorage.lastUpdated = uint48(block.timestamp);
         } else {
-            updateReward(rewarded, reward);
+            updateReward(rewarded, reward, address(0));
         }
 
         // Sanity check for overflow (assumes total eligible supply of 1 which is the worst case scenario).
@@ -194,10 +194,13 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         emit RewardRegistered(msgSender, rewarded, reward, startEpoch, rewardAmounts);
     }
 
-    /// @notice Updates the reward token data.
+    /// @notice Updates the reward token data. In reward for updating the reward token data, the function allows to
+    /// claim splillover rewards virtually accrued to address(0).
+    /// @dev The spillover rewards are only claimed if the receiver address provided is non-zero.
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
-    function updateReward(address rewarded, address reward) public virtual override {
+    /// @param recipient The address to receive the spillover reward tokens.
+    function updateReward(address rewarded, address reward, address recipient) public virtual override {
         address msgSender = _msgSender();
 
         // If the account disables the rewards we pass an account balance of zero to not accrue any.
@@ -212,6 +215,10 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             currentAccountBalance,
             false
         );
+
+        if (recipient != address(0)) {
+            claim(address(0), rewarded, reward, recipient);
+        }
     }
 
     /// @notice Claims earned reward.
@@ -242,19 +249,6 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         );
 
         claim(msgSender, rewarded, reward, recipient);
-    }
-
-    /// @notice Claims spillover rewards.
-    /// @dev Rewards are only transferred to the recipient if the recipient is non-zero.
-    /// @param rewarded The address of the rewarded token.
-    /// @param reward The address of the reward token.
-    /// @param recipient The address to receive the claimed reward tokens.
-    function claimSpilloverReward(
-        address rewarded,
-        address reward,
-        address recipient
-    ) external virtual override nonReentrant {
-        claim(address(0), rewarded, reward, recipient);
     }
 
     /// @notice Enable reward token.
