@@ -16,7 +16,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     using Set for SetStorage;
 
     /// @notice The duration of a reward epoch.
-    /// @dev Must be longer than 7 days.
+    /// @dev Must be longer than 1 week, but no longer than 10 weeks.
     uint256 public immutable EPOCH_DURATION;
 
     /// @notice The maximum number of epochs in the future that newly registered reward streams can begin.
@@ -601,10 +601,11 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
 
             // Calculate the amount of tokens since the last update that should be distributed.
             for (uint48 epoch = epochStart; epoch < epochEnd; ++epoch) {
-                // Overflow safe because `totalRegistered * SCALER <= type(uint160).max < type(uint256).max`.
+                // Overflow safe because:
+                // `totalRegistered * MAX_EPOCH_DURATION <= type(uint160).max * MAX_EPOCH_DURATION / SCALER <
+                // type(uint256).max`.
                 unchecked {
-                    uint256 amount = rewardAmount(distributionStorage, epoch);
-                    delta += SCALER * timeElapsedInEpoch(epoch, lastUpdated) * amount / EPOCH_DURATION;
+                    delta += rewardAmount(distributionStorage, epoch) * timeElapsedInEpoch(epoch, lastUpdated);
                 }
             }
 
@@ -613,11 +614,11 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             uint256 currentTotalEligible = distributionStorage.totalEligible;
             if (currentTotalEligible == 0) {
                 // Downcasting is safe because the `totalRegistered <= type(uint160).max / SCALER < type(uint96).max`.
-                deltaAccountZero = uint96(delta / SCALER);
+                deltaAccountZero = uint96(delta / EPOCH_DURATION);
             } else {
-                // Overflow safe because `totalRegistered <= type(uint160).max / SCALER`.
+                // Overflow safe because `totalRegistered * SCALER <= type(uint160).max`.
                 unchecked {
-                    accumulator += uint160(delta / currentTotalEligible);
+                    accumulator += uint160(delta * SCALER / EPOCH_DURATION / currentTotalEligible);
                 }
             }
 
