@@ -56,5 +56,7 @@ contract TrackingRewardStreams is BaseRewardStreams, ITrackingRewardStreams {
         }
 
         accountStorage.balance = newAccountBalance;
+
+        emit BalanceUpdated(account, rewarded, currentAccountBalance, newAccountBalance);
     }
 }

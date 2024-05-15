@@ -97,6 +97,9 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @notice Event emitted when a reward token is claimed.
     event RewardClaimed(address indexed account, address indexed rewarded, address indexed reward, uint256 amount);
 
+    /// @notice Event emitted when the balance of the rewarded token for the account is updated.
+    event BalanceUpdated(address indexed account, address indexed rewarded, uint256 oldBalance, uint256 newBalance);
+
     /// @notice Epoch-related error. Thrown when epoch duration or start epoch is invalid.
     error InvalidEpoch();
 

@@ -15,12 +15,6 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
     using SafeERC20 for IERC20;
     using Set for SetStorage;
 
-    /// @notice Event emitted when a user stakes tokens.
-    event Staked(address indexed account, address indexed rewarded, uint256 amount);
-
-    /// @notice Event emitted when a user unstakes tokens.
-    event Unstaked(address indexed account, address indexed rewarded, uint256 amount);
-
     /// @notice Constructor for the StakingRewardStreams contract.
     /// @param evc The Ethereum Vault Connector contract.
     /// @param periodDuration The duration of a period.
@@ -57,11 +51,12 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
             distributionStorage.totalEligible += amount;
         }
 
-        accountStorage.balance = currentAccountBalance + amount;
+        uint256 newAccountBalance = currentAccountBalance + amount;
+        accountStorage.balance = newAccountBalance;
+
+        emit BalanceUpdated(msgSender, rewarded, currentAccountBalance, newAccountBalance);
 
         pullToken(IERC20(rewarded), msgSender, amount);
-
-        emit Staked(msgSender, rewarded, amount);
     }
 
     /// @notice Allows a user to unstake rewarded tokens.
@@ -108,10 +103,11 @@ contract StakingRewardStreams is BaseRewardStreams, IStakingRewardStreams {
             distributionStorage.totalEligible -= amount;
         }
 
-        accountStorage.balance = currentAccountBalance - amount;
+        uint256 newAccountBalance = currentAccountBalance - amount;
+        accountStorage.balance = newAccountBalance;
+
+        emit BalanceUpdated(msgSender, rewarded, currentAccountBalance, newAccountBalance);
 
         pushToken(IERC20(rewarded), recipient, amount);
-
-        emit Unstaked(msgSender, rewarded, amount);
     }
 }
