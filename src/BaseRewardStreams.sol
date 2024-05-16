@@ -16,7 +16,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     using Set for SetStorage;
 
     /// @notice The duration of a reward epoch.
-    /// @dev Must be longer than 7 days.
+    /// @dev Must be longer than 1 week, but no longer than 10 weeks.
     uint256 public immutable EPOCH_DURATION;
 
     /// @notice The maximum number of epochs in the future that newly registered reward streams can begin.
@@ -97,6 +97,9 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @notice Event emitted when a reward token is claimed.
     event RewardClaimed(address indexed account, address indexed rewarded, address indexed reward, uint256 amount);
 
+    /// @notice Event emitted when the balance of the rewarded token for the account is updated.
+    event BalanceUpdated(address indexed account, address indexed rewarded, uint256 oldBalance, uint256 newBalance);
+
     /// @notice Epoch-related error. Thrown when epoch duration or start epoch is invalid.
     error InvalidEpoch();
 
@@ -170,7 +173,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         if (distributionStorage.lastUpdated == 0) {
             distributionStorage.lastUpdated = uint48(block.timestamp);
         } else {
-            updateReward(rewarded, reward);
+            updateReward(rewarded, reward, address(0));
         }
 
         // Sanity check for overflow (assumes total eligible supply of 1 which is the worst case scenario).
@@ -194,10 +197,13 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         emit RewardRegistered(msgSender, rewarded, reward, startEpoch, rewardAmounts);
     }
 
-    /// @notice Updates the reward token data.
+    /// @notice Updates the reward token data. In reward for updating the reward token data, the function allows to
+    /// claim splillover rewards virtually accrued to address(0).
+    /// @dev The spillover rewards are only claimed if the receiver address provided is non-zero.
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
-    function updateReward(address rewarded, address reward) public virtual override {
+    /// @param recipient The address to receive the spillover reward tokens.
+    function updateReward(address rewarded, address reward, address recipient) public virtual override {
         address msgSender = _msgSender();
 
         // If the account disables the rewards we pass an account balance of zero to not accrue any.
@@ -212,6 +218,10 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             currentAccountBalance,
             false
         );
+
+        if (recipient != address(0)) {
+            claim(address(0), rewarded, reward, recipient);
+        }
     }
 
     /// @notice Claims earned reward.
@@ -242,19 +252,6 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         );
 
         claim(msgSender, rewarded, reward, recipient);
-    }
-
-    /// @notice Claims spillover rewards.
-    /// @dev Rewards are only transferred to the recipient if the recipient is non-zero.
-    /// @param rewarded The address of the rewarded token.
-    /// @param reward The address of the reward token.
-    /// @param recipient The address to receive the claimed reward tokens.
-    function claimSpilloverReward(
-        address rewarded,
-        address reward,
-        address recipient
-    ) external virtual override nonReentrant {
-        claim(address(0), rewarded, reward, recipient);
     }
 
     /// @notice Enable reward token.
@@ -601,10 +598,11 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
 
             // Calculate the amount of tokens since the last update that should be distributed.
             for (uint48 epoch = epochStart; epoch < epochEnd; ++epoch) {
-                // Overflow safe because `totalRegistered * SCALER <= type(uint160).max < type(uint256).max`.
+                // Overflow safe because:
+                // `totalRegistered * MAX_EPOCH_DURATION <= type(uint160).max * MAX_EPOCH_DURATION / SCALER <
+                // type(uint256).max`.
                 unchecked {
-                    uint256 amount = rewardAmount(distributionStorage, epoch);
-                    delta += SCALER * timeElapsedInEpoch(epoch, lastUpdated) * amount / EPOCH_DURATION;
+                    delta += rewardAmount(distributionStorage, epoch) * timeElapsedInEpoch(epoch, lastUpdated);
                 }
             }
 
@@ -613,11 +611,11 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             uint256 currentTotalEligible = distributionStorage.totalEligible;
             if (currentTotalEligible == 0) {
                 // Downcasting is safe because the `totalRegistered <= type(uint160).max / SCALER < type(uint96).max`.
-                deltaAccountZero = uint96(delta / SCALER);
+                deltaAccountZero = uint96(delta / EPOCH_DURATION);
             } else {
-                // Overflow safe because `totalRegistered <= type(uint160).max / SCALER`.
+                // Overflow safe because `totalRegistered * SCALER <= type(uint160).max`.
                 unchecked {
-                    accumulator += uint160(delta / currentTotalEligible);
+                    accumulator += uint160(delta * SCALER / EPOCH_DURATION / currentTotalEligible);
                 }
             }
 
