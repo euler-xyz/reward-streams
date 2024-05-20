@@ -98,14 +98,12 @@ contract ScenarioTest is Test {
         assertEq(trackingDistributor.earnedReward(address(0), trackingRewarded, reward, false), expectedAmount);
 
         // claim the rewards earned by address(0)
-        stakingDistributor.updateReward(stakingRewarded, reward);
         uint256 preClaimBalance = MockERC20(reward).balanceOf(address(this));
-        stakingDistributor.claimSpilloverReward(stakingRewarded, reward, address(this));
+        stakingDistributor.updateReward(stakingRewarded, reward, address(this));
         assertEq(MockERC20(reward).balanceOf(address(this)), preClaimBalance + expectedAmount);
 
-        trackingDistributor.updateReward(trackingRewarded, reward);
         preClaimBalance = MockERC20(reward).balanceOf(address(this));
-        trackingDistributor.claimSpilloverReward(trackingRewarded, reward, address(this));
+        trackingDistributor.updateReward(trackingRewarded, reward, address(this));
         assertEq(MockERC20(reward).balanceOf(address(this)), preClaimBalance + expectedAmount);
 
         // verify total claimed
@@ -128,23 +126,22 @@ contract ScenarioTest is Test {
             trackingDistributor.earnedReward(address(0), trackingRewarded, reward, false), expectedAmount, 1
         );
 
-        stakingDistributor.updateReward(stakingRewarded, reward);
+        // only update the rewards
+        stakingDistributor.updateReward(stakingRewarded, reward, address(0));
         preClaimBalance = MockERC20(reward).balanceOf(address(this));
         assertEq(MockERC20(reward).balanceOf(address(this)), preClaimBalance);
 
-        trackingDistributor.updateReward(trackingRewarded, reward);
+        trackingDistributor.updateReward(trackingRewarded, reward, address(0));
         preClaimBalance = MockERC20(reward).balanceOf(address(this));
         assertEq(MockERC20(reward).balanceOf(address(this)), preClaimBalance);
 
         // claim the rewards earned by address(0)
-        stakingDistributor.updateReward(stakingRewarded, reward);
         preClaimBalance = MockERC20(reward).balanceOf(address(this));
-        stakingDistributor.claimSpilloverReward(stakingRewarded, reward, address(this));
+        stakingDistributor.updateReward(stakingRewarded, reward, address(this));
         assertApproxEqAbs(MockERC20(reward).balanceOf(address(this)), preClaimBalance + expectedAmount, 1);
 
-        trackingDistributor.updateReward(trackingRewarded, reward);
         preClaimBalance = MockERC20(reward).balanceOf(address(this));
-        trackingDistributor.claimSpilloverReward(trackingRewarded, reward, address(this));
+        trackingDistributor.updateReward(trackingRewarded, reward, address(this));
         assertApproxEqAbs(MockERC20(reward).balanceOf(address(this)), preClaimBalance + expectedAmount, 1);
 
         // verify total claimed
@@ -232,17 +229,15 @@ contract ScenarioTest is Test {
         );
 
         // update and claim the rewards earned by the participant (in two steps to check that both functions work)
-        stakingDistributor.updateReward(stakingRewarded, reward);
         uint256 preClaimBalance = MockERC20(reward).balanceOf(PARTICIPANT_1);
-        stakingDistributor.claimSpilloverReward(stakingRewarded, reward, PARTICIPANT_1);
+        stakingDistributor.updateReward(stakingRewarded, reward, address(0));
         assertEq(MockERC20(reward).balanceOf(PARTICIPANT_1), preClaimBalance);
 
         stakingDistributor.claimReward(stakingRewarded, reward, PARTICIPANT_1, false);
         assertApproxEqRel(MockERC20(reward).balanceOf(PARTICIPANT_1), preClaimBalance + expectedAmount, ALLOWED_DELTA);
 
-        trackingDistributor.updateReward(trackingRewarded, reward);
         preClaimBalance = MockERC20(reward).balanceOf(PARTICIPANT_1);
-        trackingDistributor.claimSpilloverReward(trackingRewarded, reward, PARTICIPANT_1);
+        trackingDistributor.updateReward(trackingRewarded, reward, address(0));
         assertEq(MockERC20(reward).balanceOf(PARTICIPANT_1), preClaimBalance);
 
         trackingDistributor.claimReward(trackingRewarded, reward, PARTICIPANT_1, false);
@@ -419,14 +414,12 @@ contract ScenarioTest is Test {
             MockERC20(reward).balanceOf(PARTICIPANT_1), preClaimBalance + totalAmount - expectedAmount, ALLOWED_DELTA
         );
 
-        stakingDistributor.updateReward(stakingRewarded, reward);
         preClaimBalance = MockERC20(reward).balanceOf(PARTICIPANT_1);
-        stakingDistributor.claimSpilloverReward(stakingRewarded, reward, PARTICIPANT_1);
+        stakingDistributor.updateReward(stakingRewarded, reward, PARTICIPANT_1);
         assertApproxEqRel(MockERC20(reward).balanceOf(PARTICIPANT_1), preClaimBalance + expectedAmount, ALLOWED_DELTA);
 
-        trackingDistributor.updateReward(trackingRewarded, reward);
         preClaimBalance = MockERC20(reward).balanceOf(PARTICIPANT_1);
-        trackingDistributor.claimSpilloverReward(trackingRewarded, reward, PARTICIPANT_1);
+        trackingDistributor.updateReward(trackingRewarded, reward, PARTICIPANT_1);
         assertApproxEqRel(MockERC20(reward).balanceOf(PARTICIPANT_1), preClaimBalance + expectedAmount, ALLOWED_DELTA);
 
         // verify total claimed
@@ -748,14 +741,12 @@ contract ScenarioTest is Test {
 
         // PARTICIPANT_1 updates the reward data for himself, claiming the address(0) rewards
         vm.startPrank(PARTICIPANT_1);
-        stakingDistributor.updateReward(stakingRewarded, reward);
         uint256 preBalance = MockERC20(reward).balanceOf(PARTICIPANT_1);
-        stakingDistributor.claimSpilloverReward(stakingRewarded, reward, PARTICIPANT_1);
+        stakingDistributor.updateReward(stakingRewarded, reward, PARTICIPANT_1);
         assertApproxEqRel(MockERC20(reward).balanceOf(PARTICIPANT_1), preBalance + 1.25e18, ALLOWED_DELTA);
 
-        trackingDistributor.updateReward(trackingRewarded, reward);
         preBalance = MockERC20(reward).balanceOf(PARTICIPANT_1);
-        trackingDistributor.claimSpilloverReward(trackingRewarded, reward, PARTICIPANT_1);
+        trackingDistributor.updateReward(trackingRewarded, reward, PARTICIPANT_1);
         assertApproxEqRel(MockERC20(reward).balanceOf(PARTICIPANT_1), preBalance + 1.25e18, ALLOWED_DELTA);
         vm.stopPrank();
 
@@ -764,14 +755,12 @@ contract ScenarioTest is Test {
 
         // PARTICIPANT_2 updates the reward data for himself too, but there's nothing to claim for address(0)
         vm.startPrank(PARTICIPANT_2);
-        stakingDistributor.updateReward(stakingRewarded, reward);
         preBalance = MockERC20(reward).balanceOf(PARTICIPANT_2);
-        stakingDistributor.claimSpilloverReward(stakingRewarded, reward, PARTICIPANT_2);
+        stakingDistributor.updateReward(stakingRewarded, reward, PARTICIPANT_2);
         assertEq(MockERC20(reward).balanceOf(PARTICIPANT_2), preBalance);
 
-        trackingDistributor.updateReward(trackingRewarded, reward);
         preBalance = MockERC20(reward).balanceOf(PARTICIPANT_2);
-        trackingDistributor.claimSpilloverReward(trackingRewarded, reward, PARTICIPANT_2);
+        trackingDistributor.updateReward(trackingRewarded, reward, PARTICIPANT_2);
         assertEq(MockERC20(reward).balanceOf(PARTICIPANT_2), preBalance);
         vm.stopPrank();
 
@@ -880,14 +869,12 @@ contract ScenarioTest is Test {
         vm.stopPrank();
 
         // PARTICIPANT_2 also claims the address(0) rewards
-        stakingDistributor.updateReward(stakingRewarded, reward);
         preBalance = MockERC20(reward).balanceOf(PARTICIPANT_2);
-        stakingDistributor.claimSpilloverReward(stakingRewarded, reward, PARTICIPANT_2);
+        stakingDistributor.updateReward(stakingRewarded, reward, PARTICIPANT_2);
         assertApproxEqRel(MockERC20(reward).balanceOf(PARTICIPANT_2), preBalance + 2.5e18, ALLOWED_DELTA);
 
-        trackingDistributor.updateReward(trackingRewarded, reward);
         preBalance = MockERC20(reward).balanceOf(PARTICIPANT_2);
-        trackingDistributor.claimSpilloverReward(trackingRewarded, reward, PARTICIPANT_2);
+        trackingDistributor.updateReward(trackingRewarded, reward, PARTICIPANT_2);
         assertApproxEqRel(MockERC20(reward).balanceOf(PARTICIPANT_2), preBalance + 2.5e18, ALLOWED_DELTA);
 
         // sanity checks
@@ -1560,24 +1547,20 @@ contract ScenarioTest is Test {
         vm.stopPrank();
 
         // this contract claims whatever was earned by address(0)
-        stakingDistributor.updateReward(stakingRewarded, reward);
         preRewardBalance = MockERC20(reward).balanceOf(address(this));
-        stakingDistributor.claimSpilloverReward(stakingRewarded, reward, address(this));
+        stakingDistributor.updateReward(stakingRewarded, reward, address(this));
         assertApproxEqRel(MockERC20(reward).balanceOf(address(this)), preRewardBalance + 6e18, ALLOWED_DELTA);
 
-        trackingDistributor.updateReward(trackingRewarded, reward);
         preRewardBalance = MockERC20(reward).balanceOf(address(this));
-        trackingDistributor.claimSpilloverReward(trackingRewarded, reward, address(this));
+        trackingDistributor.updateReward(trackingRewarded, reward, address(this));
         assertApproxEqRel(MockERC20(reward).balanceOf(address(this)), preRewardBalance + 6e18, ALLOWED_DELTA);
 
-        stakingDistributor.updateReward(stakingRewarded, reward2);
         preRewardBalance = MockERC20(reward2).balanceOf(address(this));
-        stakingDistributor.claimSpilloverReward(stakingRewarded, reward2, address(this));
+        stakingDistributor.updateReward(stakingRewarded, reward2, address(this));
         assertApproxEqRel(MockERC20(reward2).balanceOf(address(this)), preRewardBalance + 7e18, ALLOWED_DELTA);
 
-        trackingDistributor.updateReward(trackingRewarded, reward2);
         preRewardBalance = MockERC20(reward2).balanceOf(address(this));
-        trackingDistributor.claimSpilloverReward(trackingRewarded, reward2, address(this));
+        trackingDistributor.updateReward(trackingRewarded, reward2, address(this));
         assertApproxEqRel(MockERC20(reward2).balanceOf(address(this)), preRewardBalance + 7e18, ALLOWED_DELTA);
 
         // sanity checks
@@ -1754,20 +1737,20 @@ contract ScenarioTest is Test {
             trackingDistributor.earnedReward(address(0), trackingRewarded, reward, false), 0.5e18, ALLOWED_DELTA
         );
 
-        // checkpoint the rewards, each participate updates the data for themselves
+        // checkpoint the rewards, each participant updates the data for themselves
         vm.startPrank(PARTICIPANT_1);
-        stakingDistributor.updateReward(stakingRewarded, reward);
-        trackingDistributor.updateReward(trackingRewarded, reward);
+        stakingDistributor.updateReward(stakingRewarded, reward, address(0));
+        trackingDistributor.updateReward(trackingRewarded, reward, address(0));
         vm.stopPrank();
 
         vm.startPrank(PARTICIPANT_2);
-        stakingDistributor.updateReward(stakingRewarded, reward);
-        trackingDistributor.updateReward(trackingRewarded, reward);
+        stakingDistributor.updateReward(stakingRewarded, reward, address(0));
+        trackingDistributor.updateReward(trackingRewarded, reward, address(0));
         vm.stopPrank();
 
         vm.startPrank(PARTICIPANT_3);
-        stakingDistributor.updateReward(stakingRewarded, reward);
-        trackingDistributor.updateReward(trackingRewarded, reward);
+        stakingDistributor.updateReward(stakingRewarded, reward, address(0));
+        trackingDistributor.updateReward(trackingRewarded, reward, address(0));
         vm.stopPrank();
 
         // forward the time
@@ -1807,18 +1790,18 @@ contract ScenarioTest is Test {
 
         // checkpoint the rewards, each participate updates the data for themselves
         vm.startPrank(PARTICIPANT_1);
-        stakingDistributor.updateReward(stakingRewarded, reward);
-        trackingDistributor.updateReward(trackingRewarded, reward);
+        stakingDistributor.updateReward(stakingRewarded, reward, address(0));
+        trackingDistributor.updateReward(trackingRewarded, reward, address(0));
         vm.stopPrank();
 
         vm.startPrank(PARTICIPANT_2);
-        stakingDistributor.updateReward(stakingRewarded, reward);
-        trackingDistributor.updateReward(trackingRewarded, reward);
+        stakingDistributor.updateReward(stakingRewarded, reward, address(0));
+        trackingDistributor.updateReward(trackingRewarded, reward, address(0));
         vm.stopPrank();
 
         vm.startPrank(PARTICIPANT_3);
-        stakingDistributor.updateReward(stakingRewarded, reward);
-        trackingDistributor.updateReward(trackingRewarded, reward);
+        stakingDistributor.updateReward(stakingRewarded, reward, address(0));
+        trackingDistributor.updateReward(trackingRewarded, reward, address(0));
         vm.stopPrank();
 
         // forward the time
@@ -2294,7 +2277,7 @@ contract ScenarioTest is Test {
         _rewarded = boundAddr(_rewarded);
         _reward = boundAddr(_reward);
         _receiver = boundAddr(_receiver);
-        vm.assume(_receiver != address(0));
+        vm.assume(uint160(_receiver) > 256);
 
         vm.etch(_reward, address(reward).code);
         MockERC20(_reward).mint(address(stakingDistributor), 100e18);
@@ -2311,16 +2294,6 @@ contract ScenarioTest is Test {
         vm.expectRevert(BaseRewardStreams.InvalidRecipient.selector);
         trackingDistributor.claimReward(_rewarded, _reward, address(0), _forfeitRecentReward);
         trackingDistributor.claimReward(_rewarded, _reward, _receiver, _forfeitRecentReward);
-
-        stakingDistributor.setAccountEarnedData(address(0), _rewarded, _reward, BaseRewardStreams.EarnStorage(1, 0));
-        vm.expectRevert(BaseRewardStreams.InvalidRecipient.selector);
-        stakingDistributor.claimSpilloverReward(_rewarded, _reward, address(0));
-        stakingDistributor.claimSpilloverReward(_rewarded, _reward, _receiver);
-
-        trackingDistributor.setAccountEarnedData(address(0), _rewarded, _reward, BaseRewardStreams.EarnStorage(1, 0));
-        vm.expectRevert(BaseRewardStreams.InvalidRecipient.selector);
-        trackingDistributor.claimSpilloverReward(_rewarded, _reward, address(0));
-        trackingDistributor.claimSpilloverReward(_rewarded, _reward, _receiver);
 
         // register the receiver as the owner on the EVC
         assertEq(evc.getAccountOwner(_receiver), address(0));
@@ -2346,13 +2319,13 @@ contract ScenarioTest is Test {
 
             stakingDistributor.setAccountEarnedData(address(0), _rewarded, _reward, BaseRewardStreams.EarnStorage(1, 0));
             if (i != 0) vm.expectRevert(BaseRewardStreams.InvalidRecipient.selector);
-            stakingDistributor.claimSpilloverReward(_rewarded, _reward, __receiver);
+            stakingDistributor.updateReward(_rewarded, _reward, __receiver);
 
             trackingDistributor.setAccountEarnedData(
                 address(0), _rewarded, _reward, BaseRewardStreams.EarnStorage(1, 0)
             );
             if (i != 0) vm.expectRevert(BaseRewardStreams.InvalidRecipient.selector);
-            trackingDistributor.claimSpilloverReward(_rewarded, _reward, __receiver);
+            trackingDistributor.updateReward(_rewarded, _reward, __receiver);
         }
     }
 }

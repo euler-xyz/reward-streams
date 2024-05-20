@@ -13,9 +13,8 @@ interface IRewardStreams {
     function MAX_DISTRIBUTION_LENGTH() external view returns (uint256);
     function MAX_REWARDS_ENABLED() external view returns (uint256);
     function registerReward(address rewarded, address reward, uint48 startEpoch, uint128[] calldata rewardAmounts) external;
-    function updateReward(address rewarded, address reward) external;
+    function updateReward(address rewarded, address reward, address recipient) external;
     function claimReward(address rewarded, address reward, address recipient, bool forfeitRecentReward) external;
-    function claimSpilloverReward(address rewarded, address reward, address recipient) external;
     function enableReward(address rewarded, address reward) external;
     function disableReward(address rewarded, address reward, bool forfeitRecentReward) external;
     function earnedReward(address account, address rewarded, address reward, bool forfeitRecentReward) external view returns (uint256);
