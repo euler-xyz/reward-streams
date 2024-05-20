@@ -33,3 +33,7 @@ coverage/
 
 # Gas snapshot
 .gas-snapshot
+
+# Invariant testing files
+crytic-export/
+_corpus/

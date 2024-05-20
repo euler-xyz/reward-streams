@@ -55,6 +55,11 @@ contract StakingRewardStreamsHarness is StakingRewardStreams {
         distributionStorage.totalClaimed = totalClaimed;
     }
 
+    function getEpochData(address rewarded, address reward, uint48 epoch) external view returns (uint256) {
+        mapping(uint256 => uint128[EPOCHS_PER_SLOT]) storage storageAmounts = distributions[rewarded][reward].amounts;
+        return storageAmounts[epoch / EPOCHS_PER_SLOT][epoch % EPOCHS_PER_SLOT];
+    }
+
     function getDistributionTotals(
         address rewarded,
         address reward
@@ -89,6 +94,10 @@ contract StakingRewardStreamsHarness is StakingRewardStreams {
         accounts[account][rewarded].enabledRewards.insert(reward);
     }
 
+    function isRewardEnabled(address account, address rewarded, address reward) external view returns (bool) {
+        return accounts[account][rewarded].enabledRewards.contains(reward);
+    }
+
     function getAccountEarnedData(
         address account,
         address rewarded,
@@ -104,5 +113,16 @@ contract StakingRewardStreamsHarness is StakingRewardStreams {
         EarnStorage memory earnStorage
     ) external {
         accounts[account][rewarded].earned[reward] = earnStorage;
+    }
+
+    function getUpdatedAccumulator(address rewarded, address reward) external view returns (uint208) {
+        DistributionStorage storage distributionStorage = distributions[rewarded][reward];
+        EarnStorage storage earnStorage = accounts[msg.sender][rewarded].earned[reward];
+        (, uint208 accumulator,,) = calculateRewards(distributionStorage, earnStorage, 0, false);
+        return accumulator;
+    }
+
+    function timeElapsedInEpochPublic(uint48 epoch, uint48 lastUpdated) external view returns (uint256) {
+        return timeElapsedInEpoch(epoch, lastUpdated);
     }
 }
