@@ -230,6 +230,23 @@ contract CryticToFoundry is Invariants, Setup {
         echidna_UPDATE_REWARDS_INVARIANT();
     }
 
+    function test_claimSpilloverReward() public {
+        uint128[] memory rewards = new uint128[](1);
+        rewards[0] = 2;
+        this.registerReward(0, 0, rewards);
+        _delay(4026900 + 204167);
+        this.claimSpilloverReward(0, 0);
+    }
+
+    function test_DISTRIBUTION_INVARIANTS8() public {
+        uint128[] memory rewards = new uint128[](1);
+        rewards[0] = 152;
+        this.registerReward(0, 0, rewards);
+        _delay(1800477);
+        this.claimSpilloverReward(0, 0);
+        echidna_DISTRIBUTION_INVARIANTS();
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////////////////
     //                                           HELPERS                                         //
     ///////////////////////////////////////////////////////////////////////////////////////////////

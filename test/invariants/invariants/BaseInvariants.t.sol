@@ -21,7 +21,7 @@ abstract contract BaseInvariants is HandlerAggregator {
     function assert_BASE_INVARIANT_B(address _rewarded, address _reward, address _target) internal {
         (uint256 totalEligible,,) = BaseRewardStreamsHarness(_target).getDistributionTotals(_rewarded, _reward);
         if (totalEligible == 0) {
-            try BaseRewardStreamsHarness(_target).claimSpilloverReward(_rewarded, _reward, address(this)) {}
+            try BaseRewardStreamsHarness(_target).updateReward(_rewarded, _reward, address(0)) {}
             catch {
                 assertTrue(false, BASE_INVARIANT_B);
             }
@@ -42,8 +42,8 @@ abstract contract BaseInvariants is HandlerAggregator {
 
     function assert_UPDATE_REWARDS_INVARIANT_B(address _rewarded, address _reward, address _target) internal {
         BaseRewardStreamsHarness target_ = BaseRewardStreamsHarness(_target);
-        (uint48 totalEligible,,,,) = target_.getDistributionData(_rewarded, _reward);
-        assertGe(target_.currentEpoch(), target_.getEpoch(totalEligible), UPDATE_REWARDS_INVARIANT_B);
+        (uint48 lastUpdated,,,,) = target_.getDistributionData(_rewarded, _reward);
+        assertGe(target_.currentEpoch(), target_.getEpoch(lastUpdated), UPDATE_REWARDS_INVARIANT_B);
     }
 
     function assert_UPDATE_REWARDS_INVARIANT_C(

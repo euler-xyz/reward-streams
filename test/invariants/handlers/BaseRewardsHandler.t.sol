@@ -12,6 +12,8 @@ import {BaseRewardStreamsHarness} from "test/harness/BaseRewardStreamsHarness.so
 // Interfaces
 import {IRewardStreams} from "src/interfaces/IRewardStreams.sol";
 
+import "forge-std/console.sol";
+
 /// @title BaseRewardsHandler
 /// @notice Handler test contract for the risk balance forwarder module actions
 contract BaseRewardsHandler is BaseHandler {
@@ -81,8 +83,9 @@ contract BaseRewardsHandler is BaseHandler {
 
         _before(address(actor), _rewarded, reward);
 
-        (success, returnData) =
-            actor.proxy(_target, abi.encodeWithSelector(IRewardStreams.updateReward.selector, _rewarded, reward));
+        (success, returnData) = actor.proxy(
+            _target, abi.encodeWithSelector(IRewardStreams.updateReward.selector, _rewarded, reward, address(0))
+        );
 
         if (success) {
             _after(address(actor), _rewarded, reward);
@@ -139,12 +142,12 @@ contract BaseRewardsHandler is BaseHandler {
         // Get one of the two setups randomly
         (address _rewarded, address _target) = _getRandomRewards(j);
 
-        uint256 spilloverReward = target.earnedReward(address(0), _rewarded, reward, true);
+        uint256 spilloverReward = target.earnedReward(address(0), _rewarded, reward, false);
 
         _before(address(actor), _rewarded, reward);
 
         (success, returnData) = actor.proxy(
-            _target, abi.encodeWithSelector(IRewardStreams.claimSpilloverReward.selector, _rewarded, reward, recipient)
+            _target, abi.encodeWithSelector(IRewardStreams.updateReward.selector, _rewarded, reward, recipient)
         );
 
         if (success) {
@@ -208,18 +211,6 @@ contract BaseRewardsHandler is BaseHandler {
             if (!forfeitRecentReward && enabledBefore && _distributionActive(_rewarded, reward, address(target))) {
                 assertEq(baseRewardsVars.lastUpdatedAfter, block.timestamp, UPDATE_REWARDS_INVARIANT_A);
             }
-        }
-    }
-
-    function assert_VIEW_INVARIANT_A(uint8 i, uint48 epoch, uint48 lastUpdated) external setup {
-        // Get one of the two setups randomly
-        (, address _target) = _getRandomRewards(i);
-
-        BaseRewardStreamsHarness target_ = BaseRewardStreamsHarness(_target);
-
-        try target_.timeElapsedInEpochPublic(epoch, lastUpdated) {}
-        catch {
-            assertTrue(false, VIEW_INVARIANT_A);
         }
     }
 }

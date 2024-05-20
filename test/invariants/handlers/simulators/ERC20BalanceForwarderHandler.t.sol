@@ -24,9 +24,8 @@ contract ERC20BalanceForwarderHandler is BaseHandler {
         bool success;
         bytes memory returnData;
 
-        (success, returnData) = actor.proxy(
-            address(trackingDistributor), abi.encodeWithSelector(IBalanceForwarder.enableBalanceForwarding.selector)
-        );
+        (success, returnData) =
+            actor.proxy(trackingRewarded, abi.encodeWithSelector(IBalanceForwarder.enableBalanceForwarding.selector));
 
         if (success) {
             assert(true);
@@ -37,9 +36,8 @@ contract ERC20BalanceForwarderHandler is BaseHandler {
         bool success;
         bytes memory returnData;
 
-        (success, returnData) = actor.proxy(
-            address(trackingDistributor), abi.encodeWithSelector(IBalanceForwarder.disableBalanceForwarding.selector)
-        );
+        (success, returnData) =
+            actor.proxy(trackingRewarded, abi.encodeWithSelector(IBalanceForwarder.disableBalanceForwarding.selector));
 
         if (success) {
             assert(true);
@@ -53,7 +51,7 @@ contract ERC20BalanceForwarderHandler is BaseHandler {
         address account = _getRandomActor(i);
 
         (success, returnData) =
-            actor.proxy(address(trackingDistributor), abi.encodeWithSelector(ERC20.transfer.selector, account, amount));
+            actor.proxy(trackingRewarded, abi.encodeWithSelector(ERC20.transfer.selector, account, amount));
 
         if (success) {
             assert(true);

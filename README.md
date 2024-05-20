@@ -185,6 +185,26 @@ forge test
 forge coverage
 ```
 
+## Invariant Testing Suite
+
+This project has been set up with a suite of tests that check for specific invariants for the reward streams, implemented by [vnmrtz.eth](https://twitter.com/vn_martinez_). These tests are located in the `test/invariants` directory. They are written in Solidity and are designed to be run with the [echidna](https://github.com/crytic/echidna) fuzzing tool.
+
+Installation and usage of these tools is outside the scope of this README, but you can find more information in the respective repositories:
+- [Echidna Installation](https://github.com/crytic/echidna)
+
+To run invariant tests with Echidna:
+
+```sh
+./test/scripts/echidna.sh  
+```
+
+To run assert tests with Echidna:
+
+```sh
+./test/scripts/echidna-assert.sh  
+```
+
+
 ## Safety
 
 This software is **experimental** and is provided "as is" and "as available".
