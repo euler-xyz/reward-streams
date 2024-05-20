@@ -85,4 +85,12 @@ contract MockERC20BalanceForwarder is MockERC20, IBalanceForwarder {
             balanceTracker.balanceTrackerHook(to, balanceOf(to), false);
         }
     }
+
+    function balanceTrackerHookSimulator(
+        address account,
+        uint256 newAccountBalance,
+        bool forfeitRecentReward
+    ) external {
+        balanceTracker.balanceTrackerHook(account, newAccountBalance, forfeitRecentReward);
+    }
 }
