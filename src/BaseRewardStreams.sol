@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-pragma solidity 0.8.24;
+pragma solidity ^0.8.0;
 
 import {ReentrancyGuard} from "openzeppelin-contracts/utils/ReentrancyGuard.sol";
 import {SafeERC20, IERC20} from "openzeppelin-contracts/token/ERC20/utils/SafeERC20.sol";
@@ -9,6 +9,7 @@ import {Set, SetStorage} from "evc/Set.sol";
 import {IRewardStreams} from "./interfaces/IRewardStreams.sol";
 
 /// @title BaseRewardStreams
+/// @custom:security-contact security@euler.xyz
 /// @author Euler Labs (https://www.eulerlabs.com/)
 /// @notice Base class that allows anyone to register a reward distribution stream for a given token.
 abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard {

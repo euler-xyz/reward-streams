@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-pragma solidity 0.8.24;
+pragma solidity ^0.8.0;
 
 import {Set, SetStorage} from "evc/Set.sol";
 import {BaseRewardStreams} from "./BaseRewardStreams.sol";
 import {ITrackingRewardStreams} from "./interfaces/IRewardStreams.sol";
 
 /// @title TrackingRewardStreams
+/// @custom:security-contact security@euler.xyz
 /// @author Euler Labs (https://www.eulerlabs.com/)
 /// @notice This contract inherits from `BaseRewardStreams` and implements `ITrackingRewardStreams`.
 /// It allows for the rewards to be distributed to the rewarded token holders without requiring explicit staking.

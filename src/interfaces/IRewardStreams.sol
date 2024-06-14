@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-pragma solidity ^0.8.0;
+pragma solidity >=0.8.0;
 
 import "./IBalanceTracker.sol";
 
 /// @title IRewardStreams
+/// @custom:security-contact security@euler.xyz
 /// @author Euler Labs (https://www.eulerlabs.com/)
 /// @notice Interface for Reward Streams distributor contract.
 interface IRewardStreams {
