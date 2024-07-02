@@ -17,7 +17,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     using Set for SetStorage;
 
     /// @notice The duration of a reward epoch.
-    /// @dev Must be longer than 1 week, but no longer than 10 weeks.
+    /// @dev Must be between 1 and 10 weeks, inclusive.
     uint256 public immutable EPOCH_DURATION;
 
     /// @notice The maximum number of epochs in the future that newly registered reward streams can begin.
@@ -447,18 +447,19 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
 
     /// @notice Transfers a specified amount of a token to a given address.
     /// @dev This function uses `IERC20.safeTransfer` to move tokens.
-    /// @dev This function reverts if the recipient is zero address or is a known non-owner EVC account.
+    /// @dev This function reverts if the recipient is zero address OR is a known non-owner EVC account and the token is
+    /// not EVC compatible
     /// @param token The ERC20 token to transfer.
     /// @param to The address to transfer the tokens to.
     /// @param amount The amount of tokens to transfer.
     function pushToken(IERC20 token, address to, uint256 amount) internal {
         address owner = evc.getAccountOwner(to);
 
-        if (to == address(0) || (owner != address(0) && owner != to)) {
+        if (to == address(0) || (owner != address(0) && owner != to && !isEVCCompatibleAsset(token))) {
             revert InvalidRecipient();
         }
 
-        IERC20(token).safeTransfer(to, amount);
+        token.safeTransfer(to, amount);
     }
 
     /// @notice Returns the reward token amount for an epoch, given a pre-computed distribution storage pointer.
@@ -661,5 +662,14 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             // The epoch hasn't started yet.
             return 0;
         }
+    }
+
+    /// @notice Checks if a given ERC20 token is EVC compatible.
+    /// @dev This function performs a static call to the token contract to check for the presence of the EVC function.
+    /// @param token The ERC20 token to check for EVC compatibility.
+    /// @return bool Returns true if the token is EVC compatible, false otherwise.
+    function isEVCCompatibleAsset(IERC20 token) internal view returns (bool) {
+        (bool success, bytes memory result) = address(token).staticcall(abi.encodeCall(EVCUtil.EVC, ()));
+        return success && result.length == 32 && address(evc) == abi.decode(result, (address));
     }
 }

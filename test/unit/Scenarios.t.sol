@@ -6,7 +6,7 @@ import "forge-std/Test.sol";
 import "evc/EthereumVaultConnector.sol";
 import "../harness/StakingRewardStreamsHarness.sol";
 import "../harness/TrackingRewardStreamsHarness.sol";
-import {MockERC20, MockERC20BalanceForwarder} from "../utils/MockERC20.sol";
+import {MockERC20, MockERC20BalanceForwarder, MockERC20BalanceForwarderMessedUp} from "../utils/MockERC20.sol";
 import {MockController} from "../utils/MockController.sol";
 import {boundAddr} from "../utils/TestUtils.sol";
 
@@ -1920,7 +1920,7 @@ contract ScenarioTest is Test {
         vm.stopPrank();
 
         // forward the time to the middle of the second epoch of the distribution scheme
-        vm.warp(stakingDistributor.getEpochStartTimestamp(stakingDistributor.currentEpoch() + 1) + 15 days);
+        vm.warp(trackingDistributor.getEpochStartTimestamp(trackingDistributor.currentEpoch() + 1) + 15 days);
 
         // verify earnings
         assertApproxEqRel(
@@ -2237,6 +2237,88 @@ contract ScenarioTest is Test {
         assertEq(MockERC20(trackingRewarded).balanceOf(PARTICIPANT_1), preBalance - 10e18);
     }
 
+    // reward and rewarded are the same
+    function test_Scenario_MaliciousBalanceForwarder(uint48 blockTimestamp) external {
+        blockTimestamp = uint48(bound(blockTimestamp, 1, type(uint48).max - 365 days));
+
+        uint256 ALLOWED_DELTA = 1e12; // 0.0001%
+
+        address trackingRewardedMessedUp = address(
+            new MockERC20BalanceForwarderMessedUp(evc, trackingDistributor, "Tracking Rewarded Malicious", "SFRWDDM")
+        );
+
+        // mint the tracking rewarded token to participants
+        MockERC20(trackingRewardedMessedUp).mint(PARTICIPANT_1, 10e18);
+        MockERC20(trackingRewardedMessedUp).mint(PARTICIPANT_2, 10e18);
+        MockERC20(trackingRewardedMessedUp).mint(PARTICIPANT_3, 10e18);
+
+        vm.warp(blockTimestamp);
+
+        // prepare the amounts; 3 epochs
+        uint128[] memory amounts = new uint128[](3);
+        amounts[0] = 10e18;
+        amounts[1] = 10e18;
+        amounts[2] = 10e18;
+
+        // register the distribution scheme
+        vm.startPrank(seeder);
+        trackingDistributor.registerReward(trackingRewardedMessedUp, reward, 0, amounts);
+        vm.stopPrank();
+
+        // enable reward and balance forwarding for participant 1 and participant 2
+        vm.startPrank(PARTICIPANT_1);
+        MockERC20BalanceForwarder(trackingRewardedMessedUp).enableBalanceForwarding();
+        trackingDistributor.enableReward(trackingRewardedMessedUp, reward);
+        vm.stopPrank();
+
+        vm.startPrank(PARTICIPANT_2);
+        MockERC20BalanceForwarder(trackingRewardedMessedUp).enableBalanceForwarding();
+        trackingDistributor.enableReward(trackingRewardedMessedUp, reward);
+        vm.stopPrank();
+
+        // forward the time to the end of the first epoch of the distribution scheme
+        vm.warp(trackingDistributor.getEpochStartTimestamp(trackingDistributor.currentEpoch() + 1) + 10 days);
+
+        // lock in current earnings
+        trackingDistributor.updateReward(trackingRewardedMessedUp, reward, address(0));
+
+        // verify earnings
+        assertApproxEqRel(
+            trackingDistributor.earnedReward(PARTICIPANT_1, trackingRewardedMessedUp, reward, false),
+            5e18,
+            ALLOWED_DELTA
+        );
+        assertApproxEqRel(
+            trackingDistributor.earnedReward(PARTICIPANT_2, trackingRewardedMessedUp, reward, false),
+            5e18,
+            ALLOWED_DELTA
+        );
+        assertEq(trackingDistributor.earnedReward(address(0), trackingRewardedMessedUp, reward, false), 0);
+
+        // forward the time
+        vm.warp(block.timestamp + 20 days);
+
+        // participant 3 (who doesn't have balance forwarding enabled) transfers tokens to participant 1 (who has
+        // balance forwarding enabled). despite messed up balance forwarder integration, the accounting will be correct
+        // because the forfeitRecentReward flag setting will be overriden
+        vm.prank(PARTICIPANT_3);
+        MockERC20(trackingRewardedMessedUp).transfer(PARTICIPANT_1, 10e18);
+
+        // verify earnings. both participants should earn the same amount of rewards, despite messed up balance
+        // forwarder integrations
+        assertApproxEqRel(
+            trackingDistributor.earnedReward(PARTICIPANT_1, trackingRewardedMessedUp, reward, false),
+            15e18,
+            ALLOWED_DELTA
+        );
+        assertApproxEqRel(
+            trackingDistributor.earnedReward(PARTICIPANT_2, trackingRewardedMessedUp, reward, false),
+            15e18,
+            ALLOWED_DELTA
+        );
+        assertEq(trackingDistributor.earnedReward(address(0), trackingRewardedMessedUp, reward, false), 0);
+    }
+
     function test_AssertionTrigger(
         address _account,
         address _rewarded,
@@ -2325,6 +2407,32 @@ contract ScenarioTest is Test {
                 address(0), _rewarded, _reward, BaseRewardStreams.EarnStorage(1, 0)
             );
             if (i != 0) vm.expectRevert(BaseRewardStreams.InvalidRecipient.selector);
+            trackingDistributor.updateReward(_rewarded, _reward, __receiver);
+        }
+
+        // make the reward token EVC-compatible
+        vm.mockCall(_reward, abi.encodeWithSignature("EVC()"), abi.encode(address(evc)));
+
+        for (uint160 i = 0; i < 256; ++i) {
+            address __receiver = address(uint160(_receiver) ^ i);
+
+            // if known non-owner is the recipient, but the token is EVC-compatible, proceed
+            stakingDistributor.setAccountEarnedData(
+                address(this), _rewarded, _reward, BaseRewardStreams.EarnStorage(1, 0)
+            );
+            stakingDistributor.claimReward(_rewarded, _reward, __receiver, _forfeitRecentReward);
+
+            trackingDistributor.setAccountEarnedData(
+                address(this), _rewarded, _reward, BaseRewardStreams.EarnStorage(1, 0)
+            );
+            trackingDistributor.claimReward(_rewarded, _reward, __receiver, _forfeitRecentReward);
+
+            stakingDistributor.setAccountEarnedData(address(0), _rewarded, _reward, BaseRewardStreams.EarnStorage(1, 0));
+            stakingDistributor.updateReward(_rewarded, _reward, __receiver);
+
+            trackingDistributor.setAccountEarnedData(
+                address(0), _rewarded, _reward, BaseRewardStreams.EarnStorage(1, 0)
+            );
             trackingDistributor.updateReward(_rewarded, _reward, __receiver);
         }
     }

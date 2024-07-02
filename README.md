@@ -46,8 +46,6 @@ Reward Streams operates in two modes of rewards distribution: staking and balanc
 
 The balance-tracking `TrackingRewardStreams` implementation inherits from the `BaseRewardStreams` contract. It defines the `IBalanceTracker.balanceTrackerHook` function, which is required to be called on every transfer of the rewarded token if a user opted in for the hook to be called. 
 
-In this mode, the rewarded token contract not only calls the `balanceTrackerHook` function whenever a given account balance changes, but also implements the `IBalanceForwarder` interface. This interface defines two functions: `enableBalanceForwarding` and `disableBalanceForwarding`, which are used to opt in and out of the hook being called.
-
 ### Staking Reward Distribution
 
 The staking `StakingRewardStreams` implementation also inherits from the `BaseRewardStreams` contract. It defines two functions: `stake` and `unstake`, which are used to stake and unstake the rewarded token.
@@ -123,7 +121,7 @@ Unlike other permissioned distributors based on the billion-dollar algorithm, Re
 
 `6e6 * block_time_sec * expected_apr_percent * 10**reward_token_decimals * price_of_rewarded_token / 10**rewarded_token_decimals / price_of_reward_token > 1`
 
-For example, for the SHIB-USDC reward-rewarded pair, the above condition will not be met, even with an unusually high assumed APR of 1000%:
+For example, for the SHIB-USDC rewarded-reward pair, the above condition will not be met, even with an unusually high assumed APR of 1000%:
 `block_time_sec = 12`
 `expected_apr_percent = 1000`
 `rewarded_token_decimals = 18`
@@ -134,10 +132,14 @@ For example, for the SHIB-USDC reward-rewarded pair, the above condition will no
 `6e6 * 12 * 1000 * 10**6 * 0.00002 / 10**18 / 1` is less than `1`.
 
 6. **If nobody earns rewards at the moment (i.e. nobody staked/deposited yet), they're being virtually accrued by address(0) and may be claimed by anyone**: This feature is designed to prevent reward tokens from being lost when nobody earns them at the moment. However, it also means that unclaimed rewards could potentially be claimed by anyone.
-7. **Distributor contracts do not have an owner or admin meaning that none of the assets can be directly recovered from them**: This feature is required for the system to work in a permissionless manner. However, it also means that if a mistake is made in the distribution of rewards, the assets cannot be directly recovered from the distributor contracts.
-8. **Distributor contracts do not support rebasing and fee-on-transfer tokens**: This limitation is in place due to internal accounting system limitations. Neither reward nor rewarded tokens may be rebasing or fee-on-transfer tokens.
-9. **Precision loss may lead to the portion of rewards being lost to the distributor**: Precision loss is inherent to calculations in Solidity due to its use of fixed-point arithmetic. In some configurations of the distributor and streams, depending on the accumulator update frequency, a dust portion of the rewards registered might get irrevocably lost to the distributor. However, the amount lost should be negligible as long as the condition from 5. is met.
-10. **Permissionless nature of the distributor may lead to DOS for popular reward-rewarded token pairs**: The distributor allows anyone to incentivize any token with any reward. A bad actor may grief the party willing to legitimately incentivize a given reward-rewarded token pair by registering a tiny reward stream long before the party decides to register the reward stream themselves. Such a reward stream, if not updated frequently, may lead to a situation where the legitimate party is forced to update it themselves since the time the bad actor set up their stream. This may be costly in terms of gas or even impossible if enough time elapses that the gas cost to update such a reward stream exceeds the block gas limit.
+7. **If nobody earns rewards at the moment, despite being virtually accrued by address(0) and claimable by anyone, they might still get lost due to rounding**: This limitation may occur due to unfortunate rounding errors during internal calculations, which can result in registered rewards being irrevocably lost. To ensure that the value lost due to rounding is not significant, one must ensure that 1 wei of the reward token multiplied by epoch duration has negligible value.
+
+For example, if the epoch duration is 2 weeks (which corresponds to ~1.2e6 seconds) and the reward token is WBTC, in one rounding, up to ~1.2e6 WBTC may be lost. At the current BTC price, this value corresponds to ~$700, which is a significant value to lose for just one update of the reward stream. Hence, one must either avoid adding rewards that have a significant value of 1 wei or make sure that someone earns rewards at all times.
+
+8. **Distributor contracts do not have an owner or admin meaning that none of the assets can be directly recovered from them**: This feature is required for the system to work in a permissionless manner. However, it also means that if a mistake is made in the distribution of rewards, the assets cannot be directly recovered from the distributor contracts.
+9. **Distributor contracts do not support rebasing and fee-on-transfer tokens**: This limitation is in place due to internal accounting system limitations. Neither reward nor rewarded tokens may be rebasing or fee-on-transfer tokens.
+10. **Precision loss may lead to the portion of rewards being lost to the distributor**: Precision loss is inherent to calculations in Solidity due to its use of fixed-point arithmetic. In some configurations of the distributor and streams, depending on the accumulator update frequency, a dust portion of the rewards registered might get irrevocably lost to the distributor. However, the amount lost should be negligible as long as the condition from 5. is met.
+11. **Permissionless nature of the distributor may lead to DOS for popular reward-rewarded token pairs**: The distributor allows anyone to incentivize any token with any reward. A bad actor may grief the party willing to legitimately incentivize a given reward-rewarded token pair by registering a tiny reward stream long before the party decides to register the reward stream themselves. Such a reward stream, if not updated frequently, may lead to a situation where the legitimate party is forced to update it themselves since the time the bad actor set up their stream. This may be costly in terms of gas.
 
 ## Install
 
