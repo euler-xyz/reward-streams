@@ -107,7 +107,7 @@ As previously explained, rewards distributions are epoch-based. Thanks to that, 
 
 ### Example:
 
-Alice staked her `ABC` and decided to enable both `DEF` and `GHI` rewards. Alice now wants to unstake her `ABC`, but notices that despite her estimations `GHI` tokens that she earned have very low value. It's been some time since the `GHI` distribution was updated last time hence the gas cost associated with unstaking may be significant. Alice may decide to either call `unstake` with `forgiveRecentReward` set to `true`, which means that both `DEF` and `GHI` rewards that she would earn since the last updates would get lost in favor of the rest of participants. Or she may first call `disableReward(GHI)` with `forgiveRecentReward` set to `true`, which will skip epochs iteration for `GHI` distribution, and then call `unstake` with `forgiveRecentReward` set to `false`, keeping all the `DEF` rewards.
+Alice staked her `ABC` and decided to enable both `DEF` and `GHI` rewards. Alice now wants to unstake her `ABC`, but notices that despite her estimations `GHI` tokens that she earned have very low value. It's been some time since the `GHI` distribution was updated last time hence the gas cost associated with unstaking may be significant. Alice may decide to either call `unstake` with `forfeitRecentReward` set to `true`, which means that both `DEF` and `GHI` rewards that she would earn since the last updates would get lost in favor of the rest of participants. Or she may first call `disableReward(GHI)` with `forfeitRecentReward` set to `true`, which will skip epochs iteration for `GHI` distribution, and then call `unstake` with `forfeitRecentReward` set to `false`, keeping all the `DEF` rewards.
 
 ---
 
