@@ -23,11 +23,11 @@ contract StakingTest is Test {
 
     function test_StakeAndUnstake(address participant, uint64 amount, address recipient) external {
         vm.assume(
-            participant != address(0) && participant != address(evc) && participant != address(distributor)
+            uint160(participant) > 255 && participant != address(evc) && participant != address(distributor)
                 && participant != rewarded
         );
         vm.assume(
-            recipient != address(0) && recipient != address(evc) && recipient != address(distributor)
+            uint160(recipient) > 255 && recipient != address(evc) && recipient != address(distributor)
                 && recipient != rewarded
         );
         vm.assume(amount > 0);
@@ -107,11 +107,31 @@ contract StakingTest is Test {
         }
 
         // but if owner is the recipient, it should work
+        uint256 snapshot = vm.snapshot();
         preBalanceRecipient = MockERC20(rewarded).balanceOf(recipient);
         preBalanceDistributor = MockERC20(rewarded).balanceOf(address(distributor));
         distributor.unstake(rewarded, type(uint256).max, recipient, false);
         assertEq(MockERC20(rewarded).balanceOf(recipient), preBalanceRecipient + preBalanceDistributor);
         assertEq(MockERC20(rewarded).balanceOf(address(distributor)), 0);
+
+        // it should also work if the rewarded token is EVC-compatible
+        vm.revertTo(snapshot);
+        vm.mockCall(rewarded, abi.encodeWithSignature("EVC()"), abi.encode(address(evc)));
+
+        for (uint160 i = 1; i < 256; ++i) {
+            snapshot = vm.snapshot();
+
+            address _recipient = address(uint160(recipient) ^ i);
+
+            // if known non-owner is the recipient, but the rewarded token is EVC-compatible, proceed
+            preBalanceRecipient = MockERC20(rewarded).balanceOf(_recipient);
+            preBalanceDistributor = MockERC20(rewarded).balanceOf(address(distributor));
+            distributor.unstake(rewarded, type(uint256).max, _recipient, false);
+            assertEq(MockERC20(rewarded).balanceOf(_recipient), preBalanceRecipient + preBalanceDistributor);
+            assertEq(MockERC20(rewarded).balanceOf(address(distributor)), 0);
+
+            vm.revertTo(snapshot);
+        }
 
         vm.stopPrank();
     }

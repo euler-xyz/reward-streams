@@ -2327,5 +2327,31 @@ contract ScenarioTest is Test {
             if (i != 0) vm.expectRevert(BaseRewardStreams.InvalidRecipient.selector);
             trackingDistributor.updateReward(_rewarded, _reward, __receiver);
         }
+
+        // make the reward token EVC-compatible
+        vm.mockCall(_reward, abi.encodeWithSignature("EVC()"), abi.encode(address(evc)));
+
+        for (uint160 i = 0; i < 256; ++i) {
+            address __receiver = address(uint160(_receiver) ^ i);
+
+            // if known non-owner is the recipient, but the token is EVC-compatible, proceed
+            stakingDistributor.setAccountEarnedData(
+                address(this), _rewarded, _reward, BaseRewardStreams.EarnStorage(1, 0)
+            );
+            stakingDistributor.claimReward(_rewarded, _reward, __receiver, _forfeitRecentReward);
+
+            trackingDistributor.setAccountEarnedData(
+                address(this), _rewarded, _reward, BaseRewardStreams.EarnStorage(1, 0)
+            );
+            trackingDistributor.claimReward(_rewarded, _reward, __receiver, _forfeitRecentReward);
+
+            stakingDistributor.setAccountEarnedData(address(0), _rewarded, _reward, BaseRewardStreams.EarnStorage(1, 0));
+            stakingDistributor.updateReward(_rewarded, _reward, __receiver);
+
+            trackingDistributor.setAccountEarnedData(
+                address(0), _rewarded, _reward, BaseRewardStreams.EarnStorage(1, 0)
+            );
+            trackingDistributor.updateReward(_rewarded, _reward, __receiver);
+        }
     }
 }
