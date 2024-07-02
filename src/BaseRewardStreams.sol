@@ -256,7 +256,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     }
 
     /// @notice Enable reward token.
-    /// @dev There can be at most MAX_REWARDS_ENABLED rewards enabled for the reward token and the account.
+    /// @dev There can be at most MAX_REWARDS_ENABLED rewards enabled for the rewarded token and the account.
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
     function enableReward(address rewarded, address reward) external virtual override {
