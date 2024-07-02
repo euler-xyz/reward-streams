@@ -2304,7 +2304,8 @@ contract ScenarioTest is Test {
         vm.prank(PARTICIPANT_3);
         MockERC20(trackingRewardedMessedUp).transfer(PARTICIPANT_1, 10e18);
 
-        // verify earnings. both participants should earn the same amount of rewards, despite messed up balance forwarder integrations
+        // verify earnings. both participants should earn the same amount of rewards, despite messed up balance
+        // forwarder integrations
         assertApproxEqRel(
             trackingDistributor.earnedReward(PARTICIPANT_1, trackingRewardedMessedUp, reward, false),
             15e18,
