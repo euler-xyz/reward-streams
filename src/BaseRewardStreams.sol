@@ -17,7 +17,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     using Set for SetStorage;
 
     /// @notice The duration of a reward epoch.
-    /// @dev Must be longer than 1 week, but no longer than 10 weeks.
+    /// @dev Must be between 1 and 10 weeks, inclusive.
     uint256 public immutable EPOCH_DURATION;
 
     /// @notice The maximum number of epochs in the future that newly registered reward streams can begin.
