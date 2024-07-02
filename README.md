@@ -46,8 +46,6 @@ Reward Streams operates in two modes of rewards distribution: staking and balanc
 
 The balance-tracking `TrackingRewardStreams` implementation inherits from the `BaseRewardStreams` contract. It defines the `IBalanceTracker.balanceTrackerHook` function, which is required to be called on every transfer of the rewarded token if a user opted in for the hook to be called. 
 
-In this mode, the rewarded token contract not only calls the `balanceTrackerHook` function whenever a given account balance changes, but also implements the `IBalanceForwarder` interface. This interface defines two functions: `enableBalanceForwarding` and `disableBalanceForwarding`, which are used to opt in and out of the hook being called.
-
 ### Staking Reward Distribution
 
 The staking `StakingRewardStreams` implementation also inherits from the `BaseRewardStreams` contract. It defines two functions: `stake` and `unstake`, which are used to stake and unstake the rewarded token.
