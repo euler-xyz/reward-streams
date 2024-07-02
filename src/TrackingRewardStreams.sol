@@ -27,7 +27,8 @@ contract TrackingRewardStreams is BaseRewardStreams, ITrackingRewardStreams {
     /// @notice Executes the balance tracking hook for an account
     /// @param account The account address to execute the hook for
     /// @param newAccountBalance The new balance of the account
-    /// @param forfeitRecentReward Whether to forfeit the most recent reward and not update the accumulator
+    /// @param forfeitRecentReward Whether to forfeit the most recent reward and not update the accumulator. Ignored
+    /// when the new balance is greater than the current balance.
     function balanceTrackerHook(
         address account,
         uint256 newAccountBalance,
@@ -37,6 +38,8 @@ contract TrackingRewardStreams is BaseRewardStreams, ITrackingRewardStreams {
         AccountStorage storage accountStorage = accounts[account][rewarded];
         uint256 currentAccountBalance = accountStorage.balance;
         address[] memory rewards = accountStorage.enabledRewards.get();
+
+        if (newAccountBalance > currentAccountBalance) forfeitRecentReward = false;
 
         for (uint256 i = 0; i < rewards.length; ++i) {
             address reward = rewards[i];
