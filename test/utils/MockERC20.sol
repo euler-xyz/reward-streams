@@ -94,3 +94,25 @@ contract MockERC20BalanceForwarder is MockERC20, IBalanceForwarder {
         balanceTracker.balanceTrackerHook(account, newAccountBalance, forfeitRecentReward);
     }
 }
+
+contract MockERC20BalanceForwarderMessedUp is MockERC20BalanceForwarder {
+    constructor(
+        IEVC _evc,
+        IBalanceTracker _balanceTracker,
+        string memory _name,
+        string memory _symbol
+    ) MockERC20BalanceForwarder(_evc, _balanceTracker, _name, _symbol) {}
+
+    function _update(address from, address to, uint256 value) internal virtual override {
+        ERC20._update(from, to, value);
+
+        if (forwardingEnabled[from]) {
+            balanceTracker.balanceTrackerHook(from, balanceOf(from), false);
+        }
+
+        // always pass forfeitRecentReward = true when increasing balance to mess up the accounting
+        if (from != to && forwardingEnabled[to]) {
+            balanceTracker.balanceTrackerHook(to, balanceOf(to), true);
+        }
+    }
+}
