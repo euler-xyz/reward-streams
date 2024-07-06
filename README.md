@@ -52,7 +52,7 @@ The staking `StakingRewardStreams` implementation also inherits from the `BaseRe
 
 In both modes, each distributor contract defines an `EPOCH_DURATION` constant, which is the duration of a single epoch. This duration cannot be less than 1 week and more than 10 weeks.
 
-When registering a new reward stream for the `rewarded` token, one needs to specify the `startEpoch` number when the new stream will come into effect. `startEpoch` cannot be more than 5 epochs into the future. Moreover, one needs to specify `rewardAmounts` array which instructs the contract how much `reward` one wants to distribute in each epoch starting from `startEpoch`. The `rewardAmounts` array must have a length of at most 25.
+When registering a new reward stream for the `rewarded` token, one must specify the `startEpoch` number when the new stream will come into effect. To protect users from obvious mistakes, the distributor contract enforces a soft requirement that ensures the `startEpoch` is not more than 5 epochs into the future. Moreover, one must specify the `rewardAmounts` array, which instructs the contract how much `reward` one wants to distribute in each epoch starting from `startEpoch`. The `rewardAmounts` array must have a length of at most 25 for one function call.
 
 If rewarded epochs of multiple reward streams overlap, the amounts will be combined and the effective distribution will be the sum of the amounts in the overlapping epochs.
 
@@ -114,7 +114,7 @@ Unlike other permissioned distributors based on the billion-dollar algorithm, Re
 ## Known limitations
 
 1. **Epoch duration may not be shorter than 1 week and longer than 10 weeks**: This limitation is in place to ensure the stability and efficiency of the distribution system. The longer the epoch, the more gas efficient the distribution is.
-2. **New reward stream may start at most 5 epochs ahead and be at most 25 epochs long**: This limitation is in place not to register distribution too far in the future and lasting for too long.
+2. **Registered reward stream can start at most 5 epochs ahead and can last for a maximum of 25 epochs**: This limitation ensures that user inputs are reasonable and helps protect them from making obvious mistakes.
 3. **A user may have at most 5 rewards enabled at a time for a given rewarded token**: This limitation is in place to prevent users from enabling an excessive number of rewards, which could lead to increased gas costs and potential system instability.
 4. **During its lifetime, a distributor may distribute at most `type(uint160).max / 2e19` units of a reward token per rewarded token**: This limitation is in place not to allow accumulator overflow.
 5. **Not all rewarded-reward token pairs may be compatible with the distributor**: This limitation may occur due to unfortunate rounding errors during internal calculations, which can result in registered rewards being irrevocably lost. To avoid this, one must ensure that the following condition, based on an empirical formula, holds true:
