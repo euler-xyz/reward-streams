@@ -49,7 +49,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         /// @notice The last timestamp when the distribution was updated.
         uint48 lastUpdated;
         /// @notice The most recent accumulator value.
-        uint208 accumulator;
+        uint160 accumulator;
         /// @notice Total rewarded token that are eligible for rewards.
         uint256 totalEligible;
         /// @notice Total reward token that have been transferred into this contract for rewards.
@@ -542,7 +542,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         uint256 currentAccountBalance,
         bool ignoreRecentReward
     ) internal virtual {
-        (uint48 lastUpdated, uint208 accumulator, uint96 claimable, uint96 deltaAccountZero) =
+        (uint48 lastUpdated, uint160 accumulator, uint96 claimable, uint96 deltaAccountZero) =
             calculateRewards(distributionStorage, accountEarnStorage, currentAccountBalance, ignoreRecentReward);
 
         // Update the distribution data.
@@ -552,7 +552,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         // Update the account's earned amount. Snapshot new accumulator value for the account.
         // Downcasting is safe because the `totalRegistered <= type(uint160).max / SCALER`.
         accountEarnStorage.claimable = claimable;
-        accountEarnStorage.accumulator = uint160(accumulator);
+        accountEarnStorage.accumulator = accumulator;
 
         // If there were excess rewards, allocate them to address(0).
         // Overflow safe because `totalRegistered <= type(uint160).max / SCALER < type(uint96).max`.
@@ -581,7 +581,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         internal
         view
         virtual
-        returns (uint48 lastUpdated, uint208 accumulator, uint96 claimable, uint96 deltaAccountZero)
+        returns (uint48 lastUpdated, uint160 accumulator, uint96 claimable, uint96 deltaAccountZero)
     {
         // If the distribution is not initialized, return.
         lastUpdated = distributionStorage.lastUpdated;
