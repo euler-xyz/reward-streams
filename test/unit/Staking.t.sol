@@ -27,8 +27,8 @@ contract StakingTest is Test {
                 && participant != rewarded
         );
         vm.assume(
-            uint160(recipient) > 255 && recipient != address(evc) && recipient != address(distributor)
-                && recipient != rewarded
+            uint160(recipient) > 255 && recipient != address(evc)
+                && !evc.haveCommonOwner(recipient, address(distributor)) && recipient != rewarded
         );
         vm.assume(amount > 0);
 
