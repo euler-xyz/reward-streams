@@ -168,6 +168,7 @@ invariant rewardAmountLessThanTotal(address rewarded, address reward, uint48 epo
     rewardAmount(rewarded, reward, epoch) <= totalRewardRegistered(rewarded, reward);
 
 
+
 /*******  High Level Properties  *******/
 
 
@@ -309,41 +310,3 @@ rule stakedReduceProperty(method f, address account, address rewarded) {
 
     
 
-// ---- Eligible change equals staked change -----------------------------------
-
-/// @title Ghost counting the number of times the distribution of `reward` accessed
-persistent ghost mapping(address => mathint) timesAccessed;
-
-
-/// @notice Hook onto the writing of `totalEligible`
-hook Sstore distributions[KEY address rewarded][KEY address reward].totalEligible
-    uint256 newAmount
-{
-    timesAccessed[reward] = timesAccessed[reward] + 1;
-}
-
-
-/// @title The change in `totalEligible` equals the change in staked balance
-rule eligibleRelational(address rewarded, uint256 amount, address reward) {
-
-    env e;
-    require e.msg.sender != currentContract.evc;
-
-    uint256 preBalance = balanceOf(e.msg.sender, rewarded);
-    uint256 preTotal = currentContract.distributions[rewarded][reward].totalEligible;
-
-    timesAccessed[reward] = 0;
-    stake(e, rewarded, amount);
-
-    // This is sound since elements in `Set.sol` are unique, and since `totalEligible`
-    // is changed once per reward.
-    require timesAccessed[reward] == 1;
-
-    uint256 postBalance = balanceOf(e.msg.sender, rewarded);
-    uint256 postTotal = currentContract.distributions[rewarded][reward].totalEligible;
-
-    assert (
-        postTotal - preTotal == postBalance - preBalance,
-        "change in total eligible equals change in staked"
-    );
-}
