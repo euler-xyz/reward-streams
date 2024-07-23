@@ -115,39 +115,11 @@ invariant EpochDurationSizeLimit()
 /// @title Each sumOfAmountPerEpochStartToEpochEnd is less than the corresponding totalRegistered 
 invariant epochSumsLETotalRegistered() 
     forall address rewarded. 
-                        forall address reward.
-                        forall mathint start.
-                        forall mathint end.
-                        sumOfAmountPerEpochStartToEpochEnd[rewarded][reward][start][end] <= to_mathint(currentContract.distributions[rewarded][reward].totalRegistered);
+    forall address reward.
+    forall mathint start.
+    forall mathint end.
+    sumOfAmountPerEpochStartToEpochEnd[rewarded][reward][start][end] <= to_mathint(currentContract.distributions[rewarded][reward].totalRegistered);
 
-
-/// @title accumulator is less than totalRewardRegistered 
-invariant accumulatorLessThanTotal()
-    (
-        forall address rewarded. forall address reward.
-        to_mathint(currentContract.distributions[rewarded][reward].accumulator) <=
-        to_mathint(currentContract.distributions[rewarded][reward].totalRegistered)
-    ) {
-        preserved with (env e) {
-            requireInvariant epochSumsLETotalRegistered();
-            requireInvariant totalRegisteredMaxValue();
-            requireInvariant EpochDurationSizeLimit();
-            require e.block.timestamp < max_uint32;
-        }
-    }
-
-invariant accumulatorLessThanTotalSimplified(address rewarded,  address reward)
-    (
-        to_mathint(currentContract.distributions[rewarded][reward].accumulator) <=
-        to_mathint(currentContract.distributions[rewarded][reward].totalRegistered)
-    ) {
-        preserved with (env e) {
-            requireInvariant epochSumsLETotalRegistered();
-            requireInvariant totalRegisteredMaxValue();
-            requireInvariant EpochDurationSizeLimit();
-            require e.block.timestamp < max_uint32;
-        }
-    }
 
 /// @title `totalRewardRegistered` is limited 
 /// totalRewardRegistered(rewarded, reward) * SCALER() <= max_uint160;
@@ -158,7 +130,6 @@ invariant totalRegisteredMaxValue()
     ) {
         preserved {
             requireInvariant epochSumsLETotalRegistered();
-            requireInvariant accumulatorLessThanTotal();
         }
     }
 
