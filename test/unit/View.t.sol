@@ -32,6 +32,32 @@ contract ViewTest is Test {
         }
     }
 
+    function test_IsRewardEnabled(address account, address rewarded, uint8 n, uint256 index, uint256 seed) external {
+        account = boundAddr(account);
+        rewarded = boundAddr(rewarded);
+        n = uint8(bound(n, 1, 5));
+        index = uint8(bound(index, 0, n - 1));
+
+        vm.startPrank(account);
+        for (uint8 i = 0; i < n; i++) {
+            address reward = address(uint160(uint256(keccak256(abi.encode(seed, i)))));
+            bool wasEnabled = distributor.enableReward(rewarded, reward);
+
+            assertTrue(distributor.isRewardEnabled(account, rewarded, reward));
+            assertTrue(wasEnabled);
+            assertFalse(distributor.enableReward(rewarded, reward));
+        }
+
+        address[] memory enabledRewards = distributor.enabledRewards(account, rewarded);
+        assertEq(enabledRewards.length, n);
+
+        bool wasDisabled = distributor.disableReward(rewarded, enabledRewards[index], false);
+
+        assertFalse(distributor.isRewardEnabled(account, rewarded, enabledRewards[index]));
+        assertTrue(wasDisabled);
+        assertFalse(distributor.disableReward(rewarded, enabledRewards[index], false));
+    }
+
     function test_BalanceOf(address account, address rewarded, uint256 balance) external {
         distributor.setAccountBalance(account, rewarded, balance);
         assertEq(distributor.balanceOf(account, rewarded), balance);
