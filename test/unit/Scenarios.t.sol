@@ -99,12 +99,14 @@ contract ScenarioTest is Test {
 
         // claim the rewards earned by address(0)
         uint256 preClaimBalance = MockERC20(reward).balanceOf(address(this));
-        stakingDistributor.updateReward(stakingRewarded, reward, address(this));
+        uint256 claimedAmount = stakingDistributor.updateReward(stakingRewarded, reward, address(this));
         assertEq(MockERC20(reward).balanceOf(address(this)), preClaimBalance + expectedAmount);
+        assertEq(claimedAmount, expectedAmount);
 
         preClaimBalance = MockERC20(reward).balanceOf(address(this));
-        trackingDistributor.updateReward(trackingRewarded, reward, address(this));
+        claimedAmount = trackingDistributor.updateReward(trackingRewarded, reward, address(this));
         assertEq(MockERC20(reward).balanceOf(address(this)), preClaimBalance + expectedAmount);
+        assertEq(claimedAmount, expectedAmount);
 
         // verify total claimed
         assertEq(stakingDistributor.totalRewardClaimed(stakingRewarded, reward), expectedAmount);
@@ -127,22 +129,26 @@ contract ScenarioTest is Test {
         );
 
         // only update the rewards
-        stakingDistributor.updateReward(stakingRewarded, reward, address(0));
+        claimedAmount = stakingDistributor.updateReward(stakingRewarded, reward, address(0));
         preClaimBalance = MockERC20(reward).balanceOf(address(this));
         assertEq(MockERC20(reward).balanceOf(address(this)), preClaimBalance);
+        assertEq(claimedAmount, 0);
 
-        trackingDistributor.updateReward(trackingRewarded, reward, address(0));
+        claimedAmount = trackingDistributor.updateReward(trackingRewarded, reward, address(0));
         preClaimBalance = MockERC20(reward).balanceOf(address(this));
         assertEq(MockERC20(reward).balanceOf(address(this)), preClaimBalance);
+        assertEq(claimedAmount, 0);
 
         // claim the rewards earned by address(0)
         preClaimBalance = MockERC20(reward).balanceOf(address(this));
-        stakingDistributor.updateReward(stakingRewarded, reward, address(this));
+        claimedAmount = stakingDistributor.updateReward(stakingRewarded, reward, address(this));
         assertApproxEqAbs(MockERC20(reward).balanceOf(address(this)), preClaimBalance + expectedAmount, 1);
+        assertApproxEqAbs(claimedAmount, expectedAmount, 1);
 
         preClaimBalance = MockERC20(reward).balanceOf(address(this));
-        trackingDistributor.updateReward(trackingRewarded, reward, address(this));
+        claimedAmount = trackingDistributor.updateReward(trackingRewarded, reward, address(this));
         assertApproxEqAbs(MockERC20(reward).balanceOf(address(this)), preClaimBalance + expectedAmount, 1);
+        assertApproxEqAbs(claimedAmount, expectedAmount, 1);
 
         // verify total claimed
         assertApproxEqAbs(stakingDistributor.totalRewardClaimed(stakingRewarded, reward), totalAmount, 1);
@@ -233,15 +239,17 @@ contract ScenarioTest is Test {
         stakingDistributor.updateReward(stakingRewarded, reward, address(0));
         assertEq(MockERC20(reward).balanceOf(PARTICIPANT_1), preClaimBalance);
 
-        stakingDistributor.claimReward(stakingRewarded, reward, PARTICIPANT_1, false);
+        uint256 claimedAmount = stakingDistributor.claimReward(stakingRewarded, reward, PARTICIPANT_1, false);
         assertApproxEqRel(MockERC20(reward).balanceOf(PARTICIPANT_1), preClaimBalance + expectedAmount, ALLOWED_DELTA);
+        assertApproxEqRel(claimedAmount, expectedAmount, ALLOWED_DELTA);
 
         preClaimBalance = MockERC20(reward).balanceOf(PARTICIPANT_1);
         trackingDistributor.updateReward(trackingRewarded, reward, address(0));
         assertEq(MockERC20(reward).balanceOf(PARTICIPANT_1), preClaimBalance);
 
-        trackingDistributor.claimReward(trackingRewarded, reward, PARTICIPANT_1, false);
+        claimedAmount = trackingDistributor.claimReward(trackingRewarded, reward, PARTICIPANT_1, false);
         assertApproxEqRel(MockERC20(reward).balanceOf(PARTICIPANT_1), preClaimBalance + expectedAmount, ALLOWED_DELTA);
+        assertApproxEqRel(claimedAmount, expectedAmount, ALLOWED_DELTA);
 
         // verify total claimed
         assertApproxEqRel(stakingDistributor.totalRewardClaimed(stakingRewarded, reward), expectedAmount, ALLOWED_DELTA);
@@ -271,12 +279,14 @@ contract ScenarioTest is Test {
 
         // claim the rewards earned by the participant (will be transferred to this contract)
         preClaimBalance = MockERC20(reward).balanceOf(address(this));
-        stakingDistributor.claimReward(stakingRewarded, reward, address(this), false);
+        claimedAmount = stakingDistributor.claimReward(stakingRewarded, reward, address(this), false);
         assertApproxEqRel(MockERC20(reward).balanceOf(address(this)), preClaimBalance + expectedAmount, ALLOWED_DELTA);
+        assertApproxEqRel(claimedAmount, expectedAmount, ALLOWED_DELTA);
 
         preClaimBalance = MockERC20(reward).balanceOf(address(this));
-        trackingDistributor.claimReward(trackingRewarded, reward, address(this), false);
+        claimedAmount = trackingDistributor.claimReward(trackingRewarded, reward, address(this), false);
         assertApproxEqRel(MockERC20(reward).balanceOf(address(this)), preClaimBalance + expectedAmount, ALLOWED_DELTA);
+        assertApproxEqRel(claimedAmount, expectedAmount, ALLOWED_DELTA);
 
         // verify total claimed
         assertApproxEqRel(stakingDistributor.totalRewardClaimed(stakingRewarded, reward), totalAmount, ALLOWED_DELTA);

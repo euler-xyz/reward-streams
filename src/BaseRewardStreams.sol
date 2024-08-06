@@ -204,7 +204,12 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
     /// @param recipient The address to receive the spillover reward tokens.
-    function updateReward(address rewarded, address reward, address recipient) public virtual override {
+    /// @return The amount of the spillover reward tokens claimed.
+    function updateReward(
+        address rewarded,
+        address reward,
+        address recipient
+    ) public virtual override returns (uint256) {
         address msgSender = _msgSender();
 
         // If the account disables the rewards we pass an account balance of zero to not accrue any.
@@ -221,8 +226,10 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         );
 
         if (recipient != address(0)) {
-            claim(address(0), rewarded, reward, recipient);
+            return claim(address(0), rewarded, reward, recipient);
         }
+
+        return 0;
     }
 
     /// @notice Claims earned reward.
@@ -231,12 +238,13 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @param reward The address of the reward token.
     /// @param recipient The address to receive the claimed reward tokens.
     /// @param forfeitRecentReward Whether to forfeit the recent rewards and not update the accumulator.
+    /// @return The amount of the claimed reward tokens.
     function claimReward(
         address rewarded,
         address reward,
         address recipient,
         bool forfeitRecentReward
-    ) external virtual override nonReentrant {
+    ) external virtual override nonReentrant returns (uint256) {
         address msgSender = _msgSender();
 
         // If the account disables the rewards we pass an account balance of zero to not accrue any.
@@ -252,7 +260,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             forfeitRecentReward
         );
 
-        claim(msgSender, rewarded, reward, recipient);
+        return claim(msgSender, rewarded, reward, recipient);
     }
 
     /// @notice Enable reward token.
@@ -527,7 +535,13 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
     /// @param recipient The address to which the claimed reward will be transferred.
-    function claim(address account, address rewarded, address reward, address recipient) internal virtual {
+    /// @return The amount of the claimed reward tokens.
+    function claim(
+        address account,
+        address rewarded,
+        address reward,
+        address recipient
+    ) internal virtual returns (uint256) {
         EarnStorage storage accountEarned = accounts[account][rewarded].earned[reward];
         uint128 amount = accountEarned.claimable;
 
@@ -546,6 +560,8 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             pushToken(IERC20(reward), recipient, amount);
             emit RewardClaimed(account, rewarded, reward, amount);
         }
+
+        return amount;
     }
 
     /// @notice Updates the data for a specific account, rewarded token and reward token.
