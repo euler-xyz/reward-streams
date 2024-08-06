@@ -259,12 +259,14 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @dev There can be at most MAX_REWARDS_ENABLED rewards enabled for the reward token and the account.
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
-    function enableReward(address rewarded, address reward) external virtual override {
+    /// @return Whether the reward token was enabled.
+    function enableReward(address rewarded, address reward) external virtual override returns (bool) {
         address msgSender = _msgSender();
         AccountStorage storage accountStorage = accounts[msgSender][rewarded];
         SetStorage storage accountEnabledRewards = accountStorage.enabledRewards;
+        bool wasEnabled = accountEnabledRewards.insert(reward);
 
-        if (accountEnabledRewards.insert(reward)) {
+        if (wasEnabled) {
             if (accountEnabledRewards.numElements > MAX_REWARDS_ENABLED) {
                 revert TooManyRewardsEnabled();
             }
@@ -280,17 +282,25 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
 
             emit RewardEnabled(msgSender, rewarded, reward);
         }
+
+        return wasEnabled;
     }
 
     /// @notice Disable reward token.
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
     /// @param forfeitRecentReward Whether to forfeit the recent rewards and not update the accumulator.
-    function disableReward(address rewarded, address reward, bool forfeitRecentReward) external virtual override {
+    /// @return Whether the reward token was disabled.
+    function disableReward(
+        address rewarded,
+        address reward,
+        bool forfeitRecentReward
+    ) external virtual override returns (bool) {
         address msgSender = _msgSender();
         AccountStorage storage accountStorage = accounts[msgSender][rewarded];
+        bool wasDisabled = accountStorage.enabledRewards.remove(reward);
 
-        if (accountStorage.enabledRewards.remove(reward)) {
+        if (wasDisabled) {
             DistributionStorage storage distributionStorage = distributions[rewarded][reward];
             uint256 currentAccountBalance = accountStorage.balance;
 
@@ -307,6 +317,8 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
 
             emit RewardDisabled(msgSender, rewarded, reward);
         }
+
+        return wasDisabled;
     }
 
     /// @notice Returns the earned reward token amount for a specific account and rewarded token.
@@ -346,6 +358,19 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         address rewarded
     ) external view virtual override returns (address[] memory) {
         return accounts[account][rewarded].enabledRewards.get();
+    }
+
+    /// @notice Checks if a specific reward token is enabled for an account and rewarded token.
+    /// @param account The address of the account.
+    /// @param rewarded The address of the rewarded token.
+    /// @param reward The address of the reward token to check if enabled.
+    /// @return Whether the reward token is enabled for the account and rewarded token.
+    function isRewardEnabled(
+        address account,
+        address rewarded,
+        address reward
+    ) external view virtual override returns (bool) {
+        return accounts[account][rewarded].enabledRewards.contains(reward);
     }
 
     /// @notice Returns the rewarded token balance of a specific account.
