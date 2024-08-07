@@ -37,3 +37,8 @@ coverage/
 # Invariant testing files
 crytic-export/
 _corpus/
+
+# Certora verrifiction temp files 
+.certora_internal/
+gambit_out/
+collect.json
