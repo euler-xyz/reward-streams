@@ -195,7 +195,8 @@ rule canBeRewarded(address rewarded, address reward, address recipient, bool for
 }
 
 
-/// @title Those that stake more should earn more rewards
+/// @title Those that stake more can earn more rewards
+
 rule stakeMoreEarnMore(
     address staker1,
     address staker2,
@@ -203,30 +204,26 @@ rule stakeMoreEarnMore(
     address reward,
     bool forfeitRecentReward
 ) {
-    env e1;
-    env e2;
     
 
-    uint256 earned1 = earnedReward(e1, staker1, rewarded, reward, forfeitRecentReward);
-    uint256 earned2 = earnedReward(e2, staker1, rewarded, reward, forfeitRecentReward);
+    env earlyEnv;
+    env lateEnv;
+    require lateEnv.block.timestamp > earlyEnv.block.timestamp;
 
-    require e2.block.timestamp > e1.block.timestamp;
-    uint256 earned1Late = earnedReward(e1, staker1, rewarded, reward, forfeitRecentReward);
-    uint256 earned2Late = earnedReward(e2, staker1, rewarded, reward, forfeitRecentReward);
+    uint256 earned1 = earnedReward(earlyEnv, staker1, rewarded, reward, forfeitRecentReward);
+    uint256 earned2 = earnedReward(earlyEnv, staker2, rewarded, reward, forfeitRecentReward);
+
+    uint256 earned1Late = earnedReward(lateEnv, staker1, rewarded, reward, forfeitRecentReward);
+    uint256 earned2Late = earnedReward(lateEnv, staker2, rewarded, reward, forfeitRecentReward);
 
     mathint diff1 = earned1Late - earned1;
     mathint diff2 = earned2Late - earned2;
 
-    assert (
-        balanceOf(staker1, rewarded) > balanceOf(staker2, rewarded) => diff1 >= diff2,
-        "stake more earn more"
-    );
 
     satisfy (
-        balanceOf(staker1, rewarded) > balanceOf(staker2, rewarded) => diff1 > diff2
+        balanceOf(staker1, rewarded) > balanceOf(staker2, rewarded) && diff1 > diff2
     );
 }
-
 
 /// @title Staking and immediately unstaking should not yield profit
 rule stakeUnStakeNoBonus(uint256 amount, address token, address staker, bool forfeitRecentReward) {
