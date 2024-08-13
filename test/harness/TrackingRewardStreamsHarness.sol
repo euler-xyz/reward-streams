@@ -95,10 +95,6 @@ contract TrackingRewardStreamsHarness is TrackingRewardStreams {
         accounts[account][rewarded].enabledRewards.insert(reward);
     }
 
-    function isRewardEnabled(address account, address rewarded, address reward) external view returns (bool) {
-        return accounts[account][rewarded].enabledRewards.contains(reward);
-    }
-
     function getAccountEarnedData(
         address account,
         address rewarded,

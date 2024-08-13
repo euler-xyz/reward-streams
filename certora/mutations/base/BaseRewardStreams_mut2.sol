@@ -17,7 +17,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     using Set for SetStorage;
 
     /// @notice The duration of a reward epoch.
-    /// @dev Must be between 1 and 10 weeks, inclusive.
+    /// @dev Must be longer than 1 week, but no longer than 10 weeks.
     uint256 public immutable EPOCH_DURATION;
 
     /// @notice The maximum number of epochs in the future that newly registered reward streams can begin.
@@ -49,7 +49,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         /// @notice The last timestamp when the distribution was updated.
         uint48 lastUpdated;
         /// @notice The most recent accumulator value.
-        uint160 accumulator;
+        uint208 accumulator;
         /// @notice Total rewarded token that are eligible for rewards.
         uint256 totalEligible;
         /// @notice Total reward token that have been transferred into this contract for rewards.
@@ -124,7 +124,8 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @param _evc The Ethereum Vault Connector contract.
     /// @param _epochDuration The duration of an epoch.
     constructor(address _evc, uint48 _epochDuration) EVCUtil(_evc) {
-        if (_epochDuration < MIN_EPOCH_DURATION || _epochDuration > MAX_EPOCH_DURATION) {
+        // Mutation: removed > requirement
+        if (_epochDuration < MIN_EPOCH_DURATION) {
             revert InvalidEpoch();
         }
 
@@ -204,12 +205,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
     /// @param recipient The address to receive the spillover reward tokens.
-    /// @return The amount of the spillover reward tokens claimed.
-    function updateReward(
-        address rewarded,
-        address reward,
-        address recipient
-    ) public virtual override returns (uint256) {
+    function updateReward(address rewarded, address reward, address recipient) public virtual override {
         address msgSender = _msgSender();
 
         // If the account disables the rewards we pass an account balance of zero to not accrue any.
@@ -226,10 +222,8 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         );
 
         if (recipient != address(0)) {
-            return claim(address(0), rewarded, reward, recipient);
+            claim(address(0), rewarded, reward, recipient);
         }
-
-        return 0;
     }
 
     /// @notice Claims earned reward.
@@ -237,14 +231,13 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
     /// @param recipient The address to receive the claimed reward tokens.
-    /// @param ignoreRecentReward Whether to ignore the most recent reward and not update the accumulator.
-    /// @return The amount of the claimed reward tokens.
+    /// @param forfeitRecentReward Whether to forfeit the recent rewards and not update the accumulator.
     function claimReward(
         address rewarded,
         address reward,
         address recipient,
-        bool ignoreRecentReward
-    ) external virtual override nonReentrant returns (uint256) {
+        bool forfeitRecentReward
+    ) external virtual override nonReentrant {
         address msgSender = _msgSender();
 
         // If the account disables the rewards we pass an account balance of zero to not accrue any.
@@ -257,24 +250,22 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             rewarded,
             reward,
             currentAccountBalance,
-            ignoreRecentReward
+            forfeitRecentReward
         );
 
-        return claim(msgSender, rewarded, reward, recipient);
+        claim(msgSender, rewarded, reward, recipient);
     }
 
     /// @notice Enable reward token.
-    /// @dev There can be at most MAX_REWARDS_ENABLED rewards enabled for the rewarded token and the account.
+    /// @dev There can be at most MAX_REWARDS_ENABLED rewards enabled for the reward token and the account.
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
-    /// @return Whether the reward token was enabled.
-    function enableReward(address rewarded, address reward) external virtual override returns (bool) {
+    function enableReward(address rewarded, address reward) external virtual override {
         address msgSender = _msgSender();
         AccountStorage storage accountStorage = accounts[msgSender][rewarded];
         SetStorage storage accountEnabledRewards = accountStorage.enabledRewards;
-        bool wasEnabled = accountEnabledRewards.insert(reward);
 
-        if (wasEnabled) {
+        if (accountEnabledRewards.insert(reward)) {
             if (accountEnabledRewards.numElements > MAX_REWARDS_ENABLED) {
                 revert TooManyRewardsEnabled();
             }
@@ -290,25 +281,17 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
 
             emit RewardEnabled(msgSender, rewarded, reward);
         }
-
-        return wasEnabled;
     }
 
     /// @notice Disable reward token.
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
     /// @param forfeitRecentReward Whether to forfeit the recent rewards and not update the accumulator.
-    /// @return Whether the reward token was disabled.
-    function disableReward(
-        address rewarded,
-        address reward,
-        bool forfeitRecentReward
-    ) external virtual override returns (bool) {
+    function disableReward(address rewarded, address reward, bool forfeitRecentReward) external virtual override {
         address msgSender = _msgSender();
         AccountStorage storage accountStorage = accounts[msgSender][rewarded];
-        bool wasDisabled = accountStorage.enabledRewards.remove(reward);
 
-        if (wasDisabled) {
+        if (accountStorage.enabledRewards.remove(reward)) {
             DistributionStorage storage distributionStorage = distributions[rewarded][reward];
             uint256 currentAccountBalance = accountStorage.balance;
 
@@ -325,28 +308,26 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
 
             emit RewardDisabled(msgSender, rewarded, reward);
         }
-
-        return wasDisabled;
     }
 
     /// @notice Returns the earned reward token amount for a specific account and rewarded token.
     /// @param account The address of the account.
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
-    /// @param ignoreRecentReward Whether to ignore the most recent reward and not update the accumulator.
+    /// @param forfeitRecentReward Whether to forfeit the recent rewards and not update the accumulator.
     /// @return The earned reward token amount for the account and rewarded token.
     function earnedReward(
         address account,
         address rewarded,
         address reward,
-        bool ignoreRecentReward
+        bool forfeitRecentReward
     ) external view virtual override returns (uint256) {
         // If the account disables the rewards we pass an account balance of zero to not accrue any.
         AccountStorage storage accountStorage = accounts[account][rewarded];
         uint256 currentAccountBalance = accountStorage.enabledRewards.contains(reward) ? accountStorage.balance : 0;
 
         (,, uint96 claimable, uint96 deltaAccountZero) = calculateRewards(
-            distributions[rewarded][reward], accountStorage.earned[reward], currentAccountBalance, ignoreRecentReward
+            distributions[rewarded][reward], accountStorage.earned[reward], currentAccountBalance, forfeitRecentReward
         );
 
         // If we have spillover rewards, we add them to `address(0)`.
@@ -366,19 +347,6 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         address rewarded
     ) external view virtual override returns (address[] memory) {
         return accounts[account][rewarded].enabledRewards.get();
-    }
-
-    /// @notice Checks if a specific reward token is enabled for an account and rewarded token.
-    /// @param account The address of the account.
-    /// @param rewarded The address of the rewarded token.
-    /// @param reward The address of the reward token to check if enabled.
-    /// @return Whether the reward token is enabled for the account and rewarded token.
-    function isRewardEnabled(
-        address account,
-        address rewarded,
-        address reward
-    ) external view virtual override returns (bool) {
-        return accounts[account][rewarded].enabledRewards.contains(reward);
     }
 
     /// @notice Returns the rewarded token balance of a specific account.
@@ -480,19 +448,18 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
 
     /// @notice Transfers a specified amount of a token to a given address.
     /// @dev This function uses `IERC20.safeTransfer` to move tokens.
-    /// @dev This function reverts if the recipient is zero address OR is a known non-owner EVC account and the token is
-    /// not EVC compatible
+    /// @dev This function reverts if the recipient is zero address or is a known non-owner EVC account.
     /// @param token The ERC20 token to transfer.
     /// @param to The address to transfer the tokens to.
     /// @param amount The amount of tokens to transfer.
     function pushToken(IERC20 token, address to, uint256 amount) internal {
         address owner = evc.getAccountOwner(to);
 
-        if (to == address(0) || (owner != address(0) && owner != to && !isEVCCompatibleAsset(token))) {
+        if (to == address(0) || (owner != address(0) && owner != to)) {
             revert InvalidRecipient();
         }
 
-        token.safeTransfer(to, amount);
+        IERC20(token).safeTransfer(to, amount);
     }
 
     /// @notice Returns the reward token amount for an epoch, given a pre-computed distribution storage pointer.
@@ -536,13 +503,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
     /// @param recipient The address to which the claimed reward will be transferred.
-    /// @return The amount of the claimed reward tokens.
-    function claim(
-        address account,
-        address rewarded,
-        address reward,
-        address recipient
-    ) internal virtual returns (uint256) {
+    function claim(address account, address rewarded, address reward, address recipient) internal virtual {
         EarnStorage storage accountEarned = accounts[account][rewarded].earned[reward];
         uint128 amount = accountEarned.claimable;
 
@@ -561,8 +522,6 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             pushToken(IERC20(reward), recipient, amount);
             emit RewardClaimed(account, rewarded, reward, amount);
         }
-
-        return amount;
     }
 
     /// @notice Updates the data for a specific account, rewarded token and reward token.
@@ -574,17 +533,17 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @param rewarded The address of the rewarded token.
     /// @param reward The address of the reward token.
     /// @param currentAccountBalance The current rewarded token balance of the account.
-    /// @param ignoreRecentReward Whether to ignore the most recent reward and not update the accumulator.
+    /// @param forfeitRecentReward Whether to forfeit the recent rewards and not update the accumulator.
     function updateRewardInternal(
         DistributionStorage storage distributionStorage,
         EarnStorage storage accountEarnStorage,
         address rewarded,
         address reward,
         uint256 currentAccountBalance,
-        bool ignoreRecentReward
+        bool forfeitRecentReward
     ) internal virtual {
-        (uint48 lastUpdated, uint160 accumulator, uint96 claimable, uint96 deltaAccountZero) =
-            calculateRewards(distributionStorage, accountEarnStorage, currentAccountBalance, ignoreRecentReward);
+        (uint48 lastUpdated, uint208 accumulator, uint96 claimable, uint96 deltaAccountZero) =
+            calculateRewards(distributionStorage, accountEarnStorage, currentAccountBalance, forfeitRecentReward);
 
         // Update the distribution data.
         distributionStorage.lastUpdated = lastUpdated;
@@ -593,7 +552,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         // Update the account's earned amount. Snapshot new accumulator value for the account.
         // Downcasting is safe because the `totalRegistered <= type(uint160).max / SCALER`.
         accountEarnStorage.claimable = claimable;
-        accountEarnStorage.accumulator = accumulator;
+        accountEarnStorage.accumulator = uint160(accumulator);
 
         // If there were excess rewards, allocate them to address(0).
         // Overflow safe because `totalRegistered <= type(uint160).max / SCALER < type(uint96).max`.
@@ -608,7 +567,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
     /// @param distributionStorage Pointer to the storage of the distribution.
     /// @param accountEarnStorage Pointer to the storage of the account's earned amount and accumulator.
     /// @param currentAccountBalance The current rewarded token balance of the account.
-    /// @param ignoreRecentReward Whether to ignore the most recent reward and not update the accumulator.
+    /// @param forfeitRecentReward Whether to forfeit the recent rewards and not update the accumulator.
     /// @return lastUpdated The next value for the last update timestamp.
     /// @return accumulator The next value for the distribution accumulator.
     /// @return claimable The next value for the account's claimable amount.
@@ -617,12 +576,12 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
         DistributionStorage storage distributionStorage,
         EarnStorage storage accountEarnStorage,
         uint256 currentAccountBalance,
-        bool ignoreRecentReward
+        bool forfeitRecentReward
     )
         internal
         view
         virtual
-        returns (uint48 lastUpdated, uint160 accumulator, uint96 claimable, uint96 deltaAccountZero)
+        returns (uint48 lastUpdated, uint208 accumulator, uint96 claimable, uint96 deltaAccountZero)
     {
         // If the distribution is not initialized, return.
         lastUpdated = distributionStorage.lastUpdated;
@@ -633,7 +592,7 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             return (lastUpdated, accumulator, claimable, 0);
         }
 
-        if (!ignoreRecentReward) {
+        if (!forfeitRecentReward) {
             // Get the start and end epochs based on the last updated timestamp of the distribution.
             uint48 epochStart = getEpoch(lastUpdated);
             uint48 epochEnd = currentEpoch() + 1;
@@ -703,14 +662,5 @@ abstract contract BaseRewardStreams is IRewardStreams, EVCUtil, ReentrancyGuard 
             // The epoch hasn't started yet.
             return 0;
         }
-    }
-
-    /// @notice Checks if a given ERC20 token is EVC compatible.
-    /// @dev This function performs a static call to the token contract to check for the presence of the EVC function.
-    /// @param token The ERC20 token to check for EVC compatibility.
-    /// @return bool Returns true if the token is EVC compatible, false otherwise.
-    function isEVCCompatibleAsset(IERC20 token) internal view returns (bool) {
-        (bool success, bytes memory result) = address(token).staticcall(abi.encodeCall(EVCUtil.EVC, ()));
-        return success && result.length == 32 && address(evc) == abi.decode(result, (address));
     }
 }
