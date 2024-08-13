@@ -43,7 +43,7 @@ contract TrackingRewardStreamsHarness is TrackingRewardStreams {
         address rewarded,
         address reward,
         uint48 lastUpdated,
-        uint208 accumulator,
+        uint160 accumulator,
         uint256 totalEligible,
         uint128 totalRegistered,
         uint128 totalClaimed

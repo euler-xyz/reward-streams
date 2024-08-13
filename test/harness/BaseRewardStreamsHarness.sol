@@ -42,7 +42,7 @@ contract BaseRewardStreamsHarness is BaseRewardStreams {
         address rewarded,
         address reward,
         uint48 lastUpdated,
-        uint208 accumulator,
+        uint160 accumulator,
         uint256 totalEligible,
         uint128 totalRegistered,
         uint128 totalClaimed
@@ -115,10 +115,10 @@ contract BaseRewardStreamsHarness is BaseRewardStreams {
         return timeElapsedInEpoch(epoch, lastUpdated);
     }
 
-    function getUpdatedAccumulator(address rewarded, address reward) external view returns (uint208) {
+    function getUpdatedAccumulator(address rewarded, address reward) external view returns (uint160) {
         DistributionStorage storage distributionStorage = distributions[rewarded][reward];
         EarnStorage storage earnStorage = accounts[msg.sender][rewarded].earned[reward];
-        (, uint208 accumulator,,) = calculateRewards(distributionStorage, earnStorage, 0, false);
+        (, uint160 accumulator,,) = calculateRewards(distributionStorage, earnStorage, 0, false);
         return accumulator;
     }
 
