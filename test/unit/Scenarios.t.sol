@@ -2369,7 +2369,7 @@ contract ScenarioTest is Test {
         _rewarded = boundAddr(_rewarded);
         _reward = boundAddr(_reward);
         _receiver = boundAddr(_receiver);
-        vm.assume(uint160(_receiver) > 256);
+        vm.assume(uint160(_rewarded) > 256 && uint160(_reward) > 256 && uint160(_receiver) > 256);
 
         vm.etch(_reward, address(reward).code);
         MockERC20(_reward).mint(address(stakingDistributor), 100e18);
