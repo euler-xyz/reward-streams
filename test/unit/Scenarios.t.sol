@@ -2366,10 +2366,9 @@ contract ScenarioTest is Test {
         address _receiver,
         bool _forfeitRecentReward
     ) external {
-        _rewarded = boundAddr(_rewarded);
-        _reward = boundAddr(_reward);
-        _receiver = boundAddr(_receiver);
-        vm.assume(uint160(_rewarded) > 256 && uint160(_reward) > 256 && uint160(_receiver) > 256);
+        _rewarded = boundAddr(address(uint160(bound(uint160(_rewarded), 257, type(uint160).max))));
+        _reward = boundAddr(address(uint160(bound(uint160(_reward), 257, type(uint160).max))));
+        _receiver = boundAddr(address(uint160(bound(uint160(_receiver), 257, type(uint160).max))));
 
         vm.etch(_reward, address(reward).code);
         MockERC20(_reward).mint(address(stakingDistributor), 100e18);
