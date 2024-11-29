@@ -107,7 +107,7 @@ contract StakingTest is Test {
         }
 
         // but if owner is the recipient, it should work
-        uint256 snapshot = vm.snapshot();
+        uint256 snapshot = vm.snapshotState();
         preBalanceRecipient = MockERC20(rewarded).balanceOf(recipient);
         preBalanceDistributor = MockERC20(rewarded).balanceOf(address(distributor));
         distributor.unstake(rewarded, type(uint256).max, recipient, false);
@@ -115,11 +115,11 @@ contract StakingTest is Test {
         assertEq(MockERC20(rewarded).balanceOf(address(distributor)), 0);
 
         // it should also work if the rewarded token is EVC-compatible
-        vm.revertTo(snapshot);
+        vm.revertToState(snapshot);
         vm.mockCall(rewarded, abi.encodeWithSignature("EVC()"), abi.encode(address(evc)));
 
         for (uint160 i = 1; i < 256; ++i) {
-            snapshot = vm.snapshot();
+            snapshot = vm.snapshotState();
 
             address _recipient = address(uint160(recipient) ^ i);
 
@@ -130,7 +130,7 @@ contract StakingTest is Test {
             assertEq(MockERC20(rewarded).balanceOf(_recipient), preBalanceRecipient + preBalanceDistributor);
             assertEq(MockERC20(rewarded).balanceOf(address(distributor)), 0);
 
-            vm.revertTo(snapshot);
+            vm.revertToState(snapshot);
         }
 
         vm.stopPrank();

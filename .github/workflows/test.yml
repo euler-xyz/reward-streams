@@ -34,7 +34,7 @@ jobs:
                 submodules: recursive
           - uses: foundry-rs/foundry-toolchain@v1
             with:
-                version: nightly
+                version: nightly-c99854277c346fa6de7a8f9837230b36fd85850e
 
           - name: Run foundry fmt check
             run: |
@@ -54,7 +54,7 @@ jobs:
           - name: Run foundry tests
             # --ast tests enables inline configs to work https://github.com/foundry-rs/foundry/issues/7310#issuecomment-1978088200
             run: |
-                forge test -vvv --gas-report --ast 
+                forge test -vvv --ast 
             id: test
 
   coverage:
