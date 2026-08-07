@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "author": "Euler Labs",
-  "license": "MIT",
+  "license": "GPL-2.0-or-later",
   "scripts": {},
   "devDependencies": {}
 }
