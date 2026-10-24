@@ -37,6 +37,9 @@ jobs:
                 version: nightly-c99854277c346fa6de7a8f9837230b36fd85850e
 
           - name: Run foundry fmt check
+            # The pinned nightly cannot parse newer dependency foundry.toml files, which remapping detection loads.
+            env:
+                FOUNDRY_AUTO_DETECT_REMAPPINGS: false
             run: |
                 forge fmt --check
             id: fmt
